@@ -1,0 +1,25 @@
+<style>
+.fileicon { display: inline-block; background-color: #C9C9C9; width: 16px; height: 16px; margin-right: 8px;  }
+</style>
+
+<table class="fsbrowser overview">
+	<tr>
+		<th class="title" colspan="5"><h2 style="text-align:left; padding: 0; margin: 0;">{title}</h2></th>
+	</tr>
+	<tr>
+		<td style="text-align:left;" colspan="5"><small style="color: #BBBBBB;"><strong>{label}</strong>: <em>{URI}</em></small></td>
+	</tr>
+	<tr class="header">
+		<th>Name</th>
+		<th>Last modified</th>
+		<th>Size</th>
+		<th></th>
+		<th>Description</th>
+	</tr>
+	
+	{include:lines()}
+	
+	<tr>
+		<th class="footer" colspan="5">{footer}</th>
+	</tr>
+</table>
