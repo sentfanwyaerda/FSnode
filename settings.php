@@ -8,7 +8,7 @@ define('FSnode_TEMP_DIRECTORY', dirname(__FILE__).'/tmp/');
 *   FIXES    *
 *************/
 #fix:pre PHP5.4.0
-if(!defined('SCANDIR_SORT_ASCENDING')){ define('SCANDIR_SORT_ASCENDING', -1); }
+if(!defined('SCANDIR_SORT_ASCENDING')){ define('SCANDIR_SORT_ASCENDING', (int) 0 ); }
 
 #This is only required for my personal flavor of FSnode; feel free to remove this line
 if(file_exists(dirname(dirname(__FILE__)).DIRECTORY_SEPARATOR.'Xnode.php')){ require_once(dirname(dirname(__FILE__)).DIRECTORY_SEPARATOR.'Xnode.php'); }
