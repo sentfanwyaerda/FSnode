@@ -4,10 +4,16 @@ function XLtrace_about_class($c){
 	else { $class = $c; }
 	
 	if(!class_exists($c)){ return FALSE; }
-	$str = NULL;
-	$str .= 'Product: '.(method_exists($class, 'Product_url') ? '<a href="'.$class::Product_url().'">' : NULL).$class::Product().(method_exists($class, 'Product_url') ? '</a>' : NULL)."\n";
-	$str .= 'Version: '.$class::Version()."\n";
-	$str .= 'License: '.$class::License(TRUE)."\n";
+	$str = NULL; $licenses = array();
+	$str .= 'Product: '.(method_exists($class, 'Product_url') ? '<a href="'.$class::Product_url().'">' : NULL).$class::Product().(method_exists($class, 'Product_url') ? '</a>' : NULL).' '.$class::Version()."\n";
+	$licenses[$class::License()] = $class::License(TRUE);
+	foreach(get_declared_classes() as $gdc){
+		if(method_exists((string) $gdc, 'Product') && method_exists((string) $gdc, 'Version') && $gdc !== $class){
+			$str .= ' + with: '.(method_exists((string) $gdc, 'Product_url') ? '<a href="'.$gdc::Product_url().'">' : NULL).$gdc::Product().(method_exists((string) $gdc, 'Product_url') ? '</a>' : NULL).' '.$gdc::Version().(!isset($licenses[$gdc::License()]) ? '<sup>('.(count($licenses)+1).')</sup>' : NULL)."\n";
+			if(!isset($licenses[$gdc::License()])){ $licenses[$gdc::License()] = '<sup>'.(count($licenses)+1).':</sup>'.$gdc::License(TRUE); }
+		}
+	}
+	$str .= 'License: '.implode(', ', $licenses)."\n";
 	return $str;
 }
 

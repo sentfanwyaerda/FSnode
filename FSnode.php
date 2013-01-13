@@ -30,8 +30,12 @@ if(!class_exists('Xnode')){
 	class Xnode { }
 }
 
+#for use of hooks:
+define('PREFIX', 'prefix');
+define('POSTFIX', 'postfix');
+
 class FSnode extends Xnode {
-	public function Version($f=FALSE){ return '0.2.3'; }
+	public function Version($f=FALSE){ return '0.2.4'; }
 	public function Product_url($u=FALSE){ return ($u === TRUE ? "https://github.com/sentfanwyaerda/FSnode" : "http://sent.wyaerda.org/FSnode/?version=".self::Version(TRUE).'&license='.str_replace(' ', '+', self::License()) );}
 	public function Product($full=FALSE){ return "FSnode".(!($full===FALSE) ? " ".self::version(TRUE).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
 	public function License($with_link=FALSE){ return ($with_link ? '<a href="'.self::License_url().'">' : NULL).'cc-by-nd 3.0'.($with_link ? '</a>' : NULL); }
@@ -52,6 +56,24 @@ class FSnode extends Xnode {
 	public /*bool*/ function method_exists($str=NULL){ return (in_array(strtolower($str), self::_allowed_methods() )); }
 	
 	public /*string*/ function __toString(){ return (string) NULL; }
+	
+	private $hooks = array();
+	private function _hook($_m_, $vars=array(), $placeholder='default', $add_default=FALSE){
+		$bool = TRUE;
+		#use like: $this->_hook(__METHOD__, $args, PREFIX);
+		$placeholder = strtolower($placeholder); if(!in_array($placeholder, array('default','prefix','postfix','itteration','fail') )){ $placeholder = 'default'; }
+		$method = $placeholder.'_hook_'.strtolower($_m_);
+		$def_method = 'default_hook_'.strtolower($_m_);
+		foreach($this->hooks as $hook){
+			if(method_exists($hook, $method)){ $bool = ( $bool && $hook::$method($vars) ); }
+			if(!($add_default===FALSE) && $placeholder != 'default' && method_exists($hook, $def_method )){ $bool = ( $bool && $hook::$def_method($vars) ); }
+		}
+		return $bool;
+	}
+	public function add_hook($hook){
+		if(class_exists( (string) $hook) && !in_array($hook, $this->hooks)){ $this->hooks[] = (string) $hook; return TRUE; }
+		else{ return FALSE; }
+	}
 	
 	private $URI = NULL;
 	public /*FSnode*/ function URI_load($URI){
@@ -166,22 +188,48 @@ class FSnode extends Xnode {
 	}
 
 	#Server Handlers
-	public /**/ function close(){}
-	public /*bool*/ function connect($a=NULL, $b=NULL, $c=NULL, $d=NULL, $timeout=90, $secure=FALSE){ return TRUE; }
+	public /*bool*/ function close(){
+		$this->_hook(__METHOD__, array(), PREFIX, TRUE);
+		$this->_hook(__METHOD__, array(), POSTFIX);
+		return TRUE;	
+	}
+	public /*bool*/ function connect($a=NULL, $b=NULL, $c=NULL, $d=NULL, $timeout=90, $secure=FALSE){
+		$this->_hook(__METHOD__, array(), PREFIX, TRUE);
+		$this->_hook(__METHOD__, array(), POSTFIX);
+		return TRUE;
+	}
 	
 	#Basic
-	public /*string*/ function read($filename){ return self::file_get_contents( $this->_filename_attach_prefix( (string) $filename ) ); }
-	public /*int*/ function write($filename, $data){ return self::file_put_contents( $this->_filename_attach_prefix( (string) $filename ), $data); }
+	public /*string*/ function read($filename){
+		$this->_hook(__METHOD__, array('filename'=>$filename), PREFIX, TRUE);
+		$result = self::file_get_contents( $this->_filename_attach_prefix( (string) $filename ) );
+		$this->_hook(__METHOD__, array('filename'=>$filename, 'result'=>$result), POSTFIX);
+		return $result;
+	}
+	public /*int*/ function write($filename, $data){
+		$this->_hook(__METHOD__, array('filename'=>$filename, 'data'=>$data), PREFIX, TRUE);
+		$result = self::file_put_contents( $this->_filename_attach_prefix( (string) $filename ), $data);
+		$this->_hook(__METHOD__, array('filename'=>$filename, 'data'=>$data, 'result'=>$result), POSTFIX);
+		return $result;
+	}
 	public /*bool*/ function delete($filename /*, (resource) $context */ ){
-		if(!$this->file_exists($filename)){ return FALSE; }
+		$this->_hook(__METHOD__, array('filename'=>$filename), PREFIX, TRUE);
+		if(!$this->file_exists($filename)){ $result = FALSE; }
 		if($this->is_dir($filename)){
-			return self::rmdir( (string) $filename );
+			$result = self::rmdir( (string) $filename );
 		}
 		else{
-			return self::unlink( (string) $filename /*, (resource) $context */  );
+			$result = self::unlink( (string) $filename /*, (resource) $context */  );
 		}
+		$this->_hook(__METHOD__, array('filename'=>$filename, 'result'=>$result), POSTFIX);
+		return $result;
 	}
-	public /*array*/ function scan($directory=NULL, $sorting_order=SCANDIR_SORT_ASCENDING){ return self::scandir($directory, $sorting_order); }
+	public /*array*/ function scan($directory=NULL, $sorting_order=SCANDIR_SORT_ASCENDING){
+		$this->_hook(__METHOD__, array('directory'=>$directory, 'sorting_order'=>$sorting_order), PREFIX, TRUE);
+		$result = self::scandir($directory, $sorting_order);
+		$this->_hook(__METHOD__, array('directory'=>$directory, 'sorting_order'=>$sorting_order, 'result'=>$result), POSTFIX);
+		return $reslut;
+	}
 	
 }
 ?>
