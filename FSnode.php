@@ -37,7 +37,7 @@ define('ITTERATION', 'itteration');
 define('FAIL', 'fail');
 
 class FSnode extends Xnode {
-	public function Version($f=FALSE){ return '0.2.4'; }
+	public function Version($f=FALSE){ return '0.2.5'; }
 	public function Product_url($u=FALSE){ return ($u === TRUE ? "https://github.com/sentfanwyaerda/FSnode" : "http://sent.wyaerda.org/FSnode/?version=".self::Version(TRUE).'&license='.str_replace(' ', '+', self::License()) );}
 	public function Product($full=FALSE){ return "FSnode".(!($full===FALSE) ? " ".self::version(TRUE).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
 	public function License($with_link=FALSE){ return ($with_link ? '<a href="'.self::License_url().'">' : NULL).'cc-by-nd 3.0'.($with_link ? '</a>' : NULL); }
@@ -73,8 +73,10 @@ class FSnode extends Xnode {
 		}
 		return $bool;
 	}
-	public function add_hook($hook){
-		if(class_exists( (string) $hook) && !in_array($hook, $this->hooks)){ $this->hooks[] = (string) $hook; return TRUE; }
+	public function add_hook($hook, $auto_load=FALSE){
+		if(!($auto_load===FALSE) && !class_exists( 'FSnode_'.$hook )){ self::load_extension($hook); }
+	
+		if(class_exists( 'FSnode_'.$hook) && !in_array($hook, $this->hooks)){ $this->hooks[] = (string) $hook; return TRUE; }
 		else{ return FALSE; }
 	}
 	public function load_extension($ext=FALSE){
@@ -151,6 +153,61 @@ class FSnode extends Xnode {
 			if(!(substr(realpath($filename), 0, strlen(realpath($chroot))) == realpath($chroot))){ return FALSE; /*out of chroot*/ }
 		}	
 		return (string) $filename;
+	}
+	
+	public function parse_url($url, $component=-1){
+		if($set = parse_url($url, $component)){ return $set; }
+		elseif(preg_match("#^([a-z0-9+.-]+)[\:]([/]+)([^\?\#]+)([\?]([^\#]+))?([\#](.*))?$#i", $url, $buffer_one)){
+			$arg = array();
+			$arg['scheme'] = $buffer_one[1];
+			$hierarchical_prefix = $buffer_one[2];
+			$hierarchical = $buffer_one[3];
+			#/*debug*/ $arg['b_one'] = print_r($buffer_one, TRUE);
+			if(strlen($hierarchical_prefix) == 2){
+				preg_match("#^([^/]+)(.*)$#i", $hierarchical, $buffer_two);
+				$authority = $buffer_two[1];
+				#scenario user:pass@domain:port gets filtered by parse_url, assume scheme based authentication on central server with an (emailaddress) user.
+				switch($arg['scheme']){
+					#extend for more cases!!!
+					case 'dropbox': $arg['host'] = 'dropbox.com'; break;
+					case 'imap+gmail': case 'gmail': $arg['host'] = 'gmail.com'; break;
+					default: #do nothing
+				}
+				if(preg_match("#^([^:]+)[:](.*)#i", $authority, $buffer_three) && /*is emailaddress*/ preg_match("#^([a-z0-9_-]+)@([a-z0-9.-]+)$#i", $buffer_three[1]) ){
+					$arg['user'] = $buffer_three[1];
+					$arg['pass'] = $buffer_three[2];
+				} else {
+					$arg['user'] = $authority;
+				}
+				$arg['path'] = $buffer_two[2];
+			}
+			elseif($arg['scheme'] == 'postgres' && strlen($hierarchical_prefix) == 3){
+				$arg['host'] = 'localhost';
+				$arg['path'] = $hierarchical;
+			}
+			else{
+				$arg['path'] = $hierarchical_prefix.$hierarchical;
+			}
+			if(isset($buffer_one[5])){ $arg['query'] = $buffer_one[5]; }
+			if(isset($buffer_one[7])){ $arg['fragment'] = $buffer_one[7]; }
+			
+			if($component == -1 || is_array($component)){ return $arg; }
+			else{
+				/*fix*/ foreach(array('scheme','host','port','user','pass','path','query','fragment') as $c){ if(!isset($arg[$c])){ $arg[$c] = NULL; }}
+				switch($component){
+					case PHP_URL_SCHEME: return (string) $arg['scheme'];
+					case PHP_URL_HOST: return (string) $arg['host'];
+					case PHP_URL_PORT: return (int) $arg['port'];
+					case PHP_URL_USER: return (string) $arg['user'];
+					case PHP_URL_PASS: return (string) $arg['pass'];
+					case PHP_URL_PATH: return (string) $arg['path'];
+					case PHP_URL_QUERY: return (string) $arg['query'];
+					case PHP_URL_FRAGMENT: return (string) $arg['fragment'];
+					default: return $arg;
+				}
+			}
+		}
+		else { return FALSE; }
 	}
 	
 	/* ignores the following Filesystem&Directory Functions ( http://php.net/manual/en/ref.filesystem.php & http://php.net/manual/en/ref.dir.php ) functions: basename, clearstatcace, dirname, diskfreespace*, fclose, feof, fflush, fgetc, fgetcsv, fgets, fgetss, flock, fnmatch, fopen, fpassthru, fputcsv, fputs, fread, fscanf, fseek, fstat, ftell, ftruncate, fwrite, glob, is_link, is_uploaded_file, lchgrp,, lchown, link, linkinfo, lstat, move_uploaded_file, parse_ini_file, parse_ini_string, pathinfo, pclose, popen, readfile, readlink, realpath_cache_get, realpath_cache_size, realpath, rewind, set_file_buffer, symlink, tempnam, umask & chdir, chroot, closedir, dir, getcwd, opendir, readdir, rewinddir */
