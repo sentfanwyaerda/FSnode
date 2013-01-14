@@ -3,6 +3,7 @@
 - [Installation](https://github.com/sentfanwyaerda/FSnode/blob/master/manual/Installation.md)
 - Extension Instructions Set ([How To](https://github.com/sentfanwyaerda/FSnode/blob/master/manual/HowTo.md) make your own extension)
 - [Hooks](https://github.com/sentfanwyaerda/FSnode/blob/master/manual/Hooks.md)
+- Public Methods [Library](https://github.com/sentfanwyaerda/FSnode/blob/master/manual/Library.md)
 
 ##Extensions:
 - [local](https://github.com/sentfanwyaerda/FSnode/blob/master/manual/FSnode_local.md)
