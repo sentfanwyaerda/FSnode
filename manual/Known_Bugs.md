@@ -13,4 +13,4 @@ While FSnode is still in its infant stage, you will encounter bugs. You can repo
 ##Resolved
 
 ##Security Issus:
-- [FSbrowser](https://github.com/sentfanwyaerda/FSnode/blob/master/manual/FSbrowser.md) allows you to mount *file:/* (your root directory) to browse your files. In future versions FSbrowser might even allow you to read/write files. During [installation](https://github.com/sentfanwyaerda/FSnode/blob/master/manual/Installation.md) you are encouraged to delete or disable FSbrowser, MANUALLY! *FSbrowser is provided ONLY for development and testing.*
+- **[FSbrowser](https://github.com/sentfanwyaerda/FSnode/blob/master/manual/FSbrowser.md)** allows you to mount *file:/* (your root directory) to browse your files. In future versions FSbrowser might even allow you to read/write files. During [installation](https://github.com/sentfanwyaerda/FSnode/blob/master/manual/Installation.md) you are encouraged to delete or disable FSbrowser, MANUALLY! *FSbrowser is provided ONLY for development and testing.*

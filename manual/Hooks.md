@@ -14,6 +14,7 @@ $fs = FSnode('file:/path/to/mount/'); $fs->add_hook('git');
 
 ##Implement a hook in your extension:
 - Add a method in your extensions class:
+
 ```php
 class FSnode_my_ext extends FSnode_local{
 	function prefix_hook_read($args=array()){
@@ -23,6 +24,7 @@ class FSnode_my_ext extends FSnode_local{
 }
 ```
 - Enable your extension specific methods to initialize hooks:
+
 ```php
 class FSnode_my_ext extends FSnode{
 	function read($filename){
