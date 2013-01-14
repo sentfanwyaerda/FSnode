@@ -15,7 +15,7 @@
 *    https://github.com/sentfanwyaerda/FSnode/blob/master/manual/FSnode_ftp.md      *
 *                                                                                   *
 * Authors:                                                                          *
-*    Sent f&acirc;n Wy&aelig;rda (sent@wyaerda.org) [creator, main]                 *
+*    Sent fan Wy&aelig;rda (fsnode@sent.wyaerda.org) [creator, main]                *
 *                                                                                   *
 * License: cc-by-nd                                                                 *
 *    Creative Commons, Attribution-No Derivative Works 3.0 Unported                 *

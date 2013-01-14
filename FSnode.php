@@ -15,7 +15,7 @@
 *    https://github.com/sentfanwyaerda/FSnode/blob/master/manual/Introduction.md    *
 *                                                                                   *
 * Authors:                                                                          *
-*    Sent f&acirc;n Wy&aelig;rda (sent@wyaerda.org) [creator, main]                 *
+*    Sent fan Wy&aelig;rda (fsnode@sent.wyaerda.org) [creator, main]                *
 *                                                                                   *
 * License: cc-by-nd                                                                 *
 *    Creative Commons, Attribution-No Derivative Works 3.0 Unported                 *
@@ -33,6 +33,8 @@ if(!class_exists('Xnode')){
 #for use of hooks:
 define('PREFIX', 'prefix');
 define('POSTFIX', 'postfix');
+define('ITTERATION', 'itteration');
+define('FAIL', 'fail');
 
 class FSnode extends Xnode {
 	public function Version($f=FALSE){ return '0.2.4'; }
@@ -64,15 +66,43 @@ class FSnode extends Xnode {
 		$placeholder = strtolower($placeholder); if(!in_array($placeholder, array('default','prefix','postfix','itteration','fail') )){ $placeholder = 'default'; }
 		$method = $placeholder.'_hook_'.strtolower($_m_);
 		$def_method = 'default_hook_'.strtolower($_m_);
-		foreach($this->hooks as $hook){
-			if(method_exists($hook, $method)){ $bool = ( $bool && $hook::$method($vars) ); }
-			if(!($add_default===FALSE) && $placeholder != 'default' && method_exists($hook, $def_method )){ $bool = ( $bool && $hook::$def_method($vars) ); }
+		foreach($this->hooks as $h){
+			$hook = 'FSnode_'.$h;
+			if(class_exists($hook) && method_exists($hook, $method)){ $bool = ( $bool && $hook::$method($vars) ); }
+			if(!($add_default===FALSE) && $placeholder != 'default' && class_exists($hook) && method_exists($hook, $def_method )){ $bool = ( $bool && $hook::$def_method($vars) ); }
 		}
 		return $bool;
 	}
 	public function add_hook($hook){
 		if(class_exists( (string) $hook) && !in_array($hook, $this->hooks)){ $this->hooks[] = (string) $hook; return TRUE; }
 		else{ return FALSE; }
+	}
+	public function load_extension($ext=FALSE){
+		switch($ext){
+			case TRUE:
+				foreach(scandir('./extension/') as $f){
+					if(!in_array($f, array('.', '..', 'all.php')) && preg_match("#(.*).php$#i", $f, $buffer)){
+						FSnode::load_extension($buffer[1]);
+					}
+				}
+				break;
+			case FALSE: break;
+			default:
+				if(is_array($ext)){
+					$bool = TRUE;
+					foreach($ext as $buffer){
+						$bool = ($bool && FSnode::load_extension($buffer) );
+					}
+					return $bool;
+				}
+				else{
+					$p = dirname(__FILE__).DIRECTORY_SEPARATOR.'extension'.DIRECTORY_SEPARATOR.preg_replace("#[^a-z0-9_]#i", "", $ext).'.php';
+					if(file_exists($p)){
+						require_once($p);
+					} else{ return FALSE; }
+				}
+		}
+		return TRUE;
 	}
 	
 	private $URI = NULL;
