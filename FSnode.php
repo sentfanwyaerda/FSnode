@@ -24,7 +24,7 @@
 *                                                                                   *
 ****************** CHANGES IN THE CODE ARE AT OWN RISK *****************************/
 
-require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'settings.php');
+require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'FSnode.settings.php');
 
 if(!class_exists('Xnode')){
 	class Xnode { }
@@ -35,15 +35,27 @@ define('PREFIX', 'prefix');
 define('POSTFIX', 'postfix');
 define('ITTERATION', 'itteration');
 define('FAIL', 'fail');
+if(!defined('FSnode_ALLOW_CODE_EXECUTE')){ define('FSnode_ALLOW_CODE_EXECUTE', FALSE); }
 
 class FSnode extends Xnode {
-	public function Version($f=FALSE){ return '0.2.5'; }
+	public function Version($f=FALSE){ return '0.2.6'; }
 	public function Product_url($u=FALSE){ return ($u === TRUE ? "https://github.com/sentfanwyaerda/FSnode" : "http://sent.wyaerda.org/FSnode/?version=".self::Version(TRUE).'&license='.str_replace(' ', '+', self::License()) );}
 	public function Product($full=FALSE){ return "FSnode".(!($full===FALSE) ? " ".self::version(TRUE).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
 	public function License($with_link=FALSE){ return ($with_link ? '<a href="'.self::License_url().'">' : NULL).'cc-by-nd 3.0'.($with_link ? '</a>' : NULL); }
 	public function License_url(){ return 'http://creativecommons.org/licenses/by-nd/3.0/'; }
 	public function Product_base(){ return dirname(__FILE__).DIRECTORY_SEPARATOR; }
 	public function Product_file($full=FALSE){ return ($full ? self::Product_base() : NULL).basename(__FILE__); }
+	public function AutoUpdate(){
+		if(FSnode_ALLOW_CODE_EXECUTE){
+			$fsnode = FSnode('file:'.FSnode::Product_base());
+			$fsnode->add_hook('git');
+			$fsnode->refresh('origin');
+			#chmod(manual, FSbrowser)
+		}
+		else{
+			return FALSE;
+		}
+	}
 		
 	function FSnode($a=NULL, $b=NULL, $c=NULL, $d=NULL){
 		self::_initialize($a, $b, $c, $d);
@@ -82,7 +94,7 @@ class FSnode extends Xnode {
 	public function load_extension($ext=FALSE){
 		switch($ext){
 			case TRUE:
-				foreach(scandir('./extension/') as $f){
+				foreach(scandir(FSnode_EXTENSION_DIRECTORY) as $f){
 					if(!in_array($f, array('.', '..', 'all.php')) && preg_match("#(.*).php$#i", $f, $buffer)){
 						FSnode::load_extension($buffer[1]);
 					}
@@ -98,7 +110,7 @@ class FSnode extends Xnode {
 					return $bool;
 				}
 				else{
-					$p = dirname(__FILE__).DIRECTORY_SEPARATOR.'extension'.DIRECTORY_SEPARATOR.preg_replace("#[^a-z0-9_]#i", "", $ext).'.php';
+					$p = FSnode_EXTENSION_DIRECTORY.preg_replace("#[^a-z0-9_]#i", "", $ext).'.php';
 					if(file_exists($p)){
 						require_once($p);
 					} else{ return FALSE; }
@@ -209,6 +221,18 @@ class FSnode extends Xnode {
 		}
 		else { return FALSE; }
 	}
+	public function rebuild_url($arg=array()){
+		if(isset($arg['user']) && /*is_emailaddress*/ preg_match("#^[a-z0-9_-]+[@][a-z0-9.-]+$#i", $arg['user']) && in_array($arg['scheme'], array('dropbox','imap+gmail'))){
+					#extend for more cases!!!
+			$hierarchal = $arg['scheme'].'://'.$arg['user'].(isset($arg['pass']) ? ':'.$arg['pass'] : NULL).(substr($arg['path'], 0, 1) != '/' ? '/' : NULL).$arg['path'];
+		}
+		elseif(isset($arg['host'])){
+			$hierarchal = $arg['scheme'].'://'.(isset($arg['user']) ? $arg['user'].(isset($arg['pass']) ? ':'.$arg['pass'] : NULL).'@' : NULL).$arg['host'].(isset($arg['port']) ? ':'.$arg['port'] : NULL).(substr($arg['path'], 0, 1) != '/' ? '/' : NULL).$arg['path'];
+		}
+		else{ $hierarchal = (isset($arg['scheme']) ? $arg['scheme'].':' : NULL).$arg['path']; }
+		$str = $hierarchal.(isset($arg['query']) ? '?'.(is_array($arg['query']) ? http_build_query($arg['query']) : $arg['query']) : NULL).(isset($arg['fragment']) ? '#'.$arg['fragment'] : NULL);
+		return $str;
+	}
 	
 	/* ignores the following Filesystem&Directory Functions ( http://php.net/manual/en/ref.filesystem.php & http://php.net/manual/en/ref.dir.php ) functions: basename, clearstatcace, dirname, diskfreespace*, fclose, feof, fflush, fgetc, fgetcsv, fgets, fgetss, flock, fnmatch, fopen, fpassthru, fputcsv, fputs, fread, fscanf, fseek, fstat, ftell, ftruncate, fwrite, glob, is_link, is_uploaded_file, lchgrp,, lchown, link, linkinfo, lstat, move_uploaded_file, parse_ini_file, parse_ini_string, pathinfo, pclose, popen, readfile, readlink, realpath_cache_get, realpath_cache_size, realpath, rewind, set_file_buffer, symlink, tempnam, umask & chdir, chroot, closedir, dir, getcwd, opendir, readdir, rewinddir */
 	
@@ -316,6 +340,16 @@ class FSnode extends Xnode {
 		$result = self::scandir($directory, $sorting_order);
 		$this->_hook(__METHOD__, array('directory'=>$directory, 'sorting_order'=>$sorting_order, 'result'=>$result), POSTFIX);
 		return $reslut;
+	}
+	
+	#Basic extended
+	public /*mixed*/ function execute($line=NULL){
+		if(FSnode_ALLOW_CODE_EXECUTE){
+			exec($line);
+		}
+	}
+	public /*bool*/ function refresh($tag=NULL){
+		return TRUE;
 	}
 	
 }

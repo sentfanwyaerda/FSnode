@@ -2,7 +2,8 @@
 /*************
 *  SETTINGS  *
 *************/
-define('FSnode_TEMP_DIRECTORY', dirname(__FILE__).'/tmp/');
+@define('FSnode_TEMP_DIRECTORY', dirname(__FILE__).DIRECTORY_SEPARATOR.'tmp'.DIRECTORY_SEPARATOR);
+@define('FSnode_EXTENSION_DIRECTORY', dirname(__FILE__).DIRECTORY_SEPARATOR.'extension'.DIRECTORY_SEPARATOR);
 
 /*************
 *   FIXES    *
@@ -17,5 +18,5 @@ if(file_exists(dirname(dirname(__FILE__)).DIRECTORY_SEPARATOR.'Xnode.php')){ req
 * EXTENSIONS *
 *************/
 $FSnode_loader = TRUE; #for only loading a few use: array('local','ftp')
-require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'extension'.DIRECTORY_SEPARATOR.'all.php');
+if(file_exists(FSnode_EXTENSION_DIRECTORY.'all.php')){ require_once(FSnode_EXTENSION_DIRECTORY.'all.php'); }
 ?>
