@@ -1,0 +1,379 @@
+<html>
+<head>
+<title></title>
+<script language="JavaScript">
+function uri_visibility(current=''){
+	uriform = document.forms['uri'];
+	
+	// status of the 'scheme'
+	document.getElementById("scheme_postfix").style.visibility = (uriform.scheme.value == '' ? 'hidden' : 'visible');
+	
+	// status of the 'anonymous' 
+	if(!in_array('user', current.split(','))){ uriform.anonymous.checked = (uriform.user.value === '' ? true : false); }
+	uriform.user.disabled = (uriform.anonymous.checked === true ? true : false);
+
+	// status of the 'pass'
+	uriform.pass.type = (uriform.secretpass.checked ? 'password' : 'text');
+	uriform.pass.disabled = (uriform.user.value == '' ? true : false);
+	uriform.secretpass.disabled = (uriform.user.value == '' ? true : false);
+	document.getElementById("pass_prefix").style.visibility = (uriform.user.value == '' ? 'hidden' : (uriform.pass.value == '' ? 'hidden' : 'visible'));
+	document.getElementById("secretlabel").setAttribute("class", (uriform.user.value == '' ? 'visibility hidden' : 'visibility visible'));
+	
+	// status of the 'user'
+	document.getElementById("user_postfix").style.visibility = (uriform.user.value == '' ? 'hidden' : (uriform.host.value == '' ? 'hidden' : 'visible'));
+	uriform.emailuser.checked = (uriform.user.value.indexOf('@') == -1 ? false : true);
+		
+	// status of the 'host'
+	document.getElementById("host_prefix").style.visibility = (uriform.host.value == '' ? (uriform.user.value == '' ? 'hidden' : 'visible') : 'visible');
+	
+	// status of the 'port'
+	uriform.port.disabled = (uriform.host.value == '' ? true : false);
+	document.getElementById("port_prefix").style.visibility = (uriform.host.value == '' ? 'hidden' : (uriform.port.value == '' ? 'hidden' : 'visible'));
+	
+	// status of the 'path'
+	document.getElementById("path_prefix").style.visibility = (uriform.path.value == '' ? (uriform.query.value == '' && uriform.fragment.value == '' ? 'hidden' : 'visible') : (uriform.path.value.substr(0,1) == '/' || uriform.pathtype.value == 'urn' ? 'hidden' : 'visible'));
+	
+	// status of the 'query'
+	document.getElementById("query_prefix").style.visibility = (uriform.query.value == '' ? 'hidden' : 'visible');
+	document.getElementById("query_prefix").innerHTML = uriform.masterdivider.value;
+	queryexpand(uriform.queryexpanded.checked, in_array('query', current.split(',')));
+	
+	// status of the 'fragment'
+	document.getElementById("fragment_prefix").style.visibility = (uriform.fragment.value == '' ? 'hidden' : 'visible');
+	
+	//buildURL();
+	buildURI();
+	explodePath();
+	requiredByScheme();
+	
+	if(current !== ''){
+		select = current.split(',');
+		uriform.elements[select[0]].focus();
+		uriform.elements[select[0]].select();
+	}
+}
+function setParam(param, v, d=false){
+	uriform = document.forms['uri'];
+	if(d==false){
+		uriform.elements[param].value = v;
+	} else {
+		uriform.elements[param].placeholder = v;
+	}
+}
+function setUser(v, d=false){ setParam('user', v, d); }
+function setPass(v, d=false){ setParam('pass', v, d); }
+function setHost(v, d=false){ setParam('host', v, d); }
+function setPort(v, d=false){ setParam('port', v, d); }
+function setPath(v, d=false){ setParam('path', v, d); }
+function setQuery(v, d=false){ setParam('query', v, d); }
+function setFragment(v, d=false){ setParam('fragment', v, d); }
+function buildURL(){
+	uriform = document.forms['uri'];
+	var url = uriform.scheme.value + ":" + (uriform.host.value == '' ? '' : "//" + uriform.host.value + (uriform.port.value == '' ? '' : ':' + uriform.port.value)) + (uriform.path.value == '' ? '' : (uriform.path.value.substr(0,1) == '/' || uriform.pathtype.value == 'urn' ? '' : '/') + uriform.path.value) ;
+	setURL(url);
+}
+function buildURI(){
+	uriform = document.forms['uri'];
+	var uri = uriform.scheme.value + ":" + (uriform.host.value == '' ? '' : "//") + (uriform.user.value == '' ? '' : uriform.user.value + (uriform.pass.value == '' || uriform.secretpass.checked ? '' : ':' + uriform.pass.value) + (uriform.host.value == '' ? '' : '@')) + (uriform.host.value == '' ? '' : uriform.host.value + (uriform.port.value == '' ? '' : ':' + uriform.port.value) ) + (uriform.path.value == '' ? (uriform.query.value == '' && uriform.fragment.value == '' || uriform.pathtype.value == 'urn' ? '' : '/') : (uriform.path.value.substr(0,1) == '/' || uriform.pathtype.value == 'urn' ? '' : '/') + uriform.path.value) + (uriform.query.value == '' ? '' : uriform.masterdivider.value + uriform.query.value) + (uriform.fragment.value == '' ? '' : '#'+ uriform.fragment.value) ;
+	setURI(uri);
+}
+function compilePath(){
+	uriform = document.forms['uri'];
+	uriform.path.value = uriform.directory.value + uriform.filename.value;
+}
+function explodePath(){
+	uriform = document.forms['uri'];
+	var i = uriform.path.value.lastIndexOf('/') + 1;
+	if(i == -1){ uriform.directory.value = ''; uriform.filename.value = uriform.path.value; }
+	else{
+		uriform.directory.value = (uriform.path.value.substr(0,1) == '/' ? '' : '/') + uriform.path.value.substr(0,i);
+		uriform.filename.value = uriform.path.value.substr(i, uriform.path.value.length - i );
+	}
+}
+function setURL(v, d=false){ setParam('url', v, d); }
+function setURI(v, d=false){ setParam('uri', v, d); }
+function ParamList(){
+	return ['user','pass','anonymous','host','port','path','pathtype','query','queryexpanded','fragment','emailuser','secretpass','directory','filename','scheme','uri','debug','assigner','divider','masterdivider']; //,'url'
+}
+function clearPlaceholders(d=true, freeup=false){
+	var arr = ParamList();
+	var length = arr.length;
+	for(var i = 0; i < length; i++){
+		setParam(arr[i], '', d);
+	}
+	//setUser('', d);setPass('', d);setHost('', d);setPort('', d);setPath('', d);setQuery('', d);setFragment('', d);
+	if(d == false){ uri_visibility(); }
+	if(freeup != false){ disableByScheme(''); requiredByScheme(''); }
+}
+function disableParam(param){
+	uriform = document.forms['uri'];
+	uriform.elements[param].disabled = true;
+	document.getElementById(param + "_main").setAttribute("class", document.getElementById(param + "_main").getAttribute("class") + " disabled");
+}
+function enableParam(param){
+	uriform = document.forms['uri'];
+	uriform.elements[param].disabled = false;
+}
+function disableByScheme(list=false, extra=''){
+	uriform = document.forms['uri'];
+	if(extra === ''){ 
+		if(list === false){ list = uriform.scheme_disabled.value; }
+		else{ uriform.scheme_disabled.value = list; }
+	}
+	else{
+		list = (uriform.scheme_disabled.value == '' ? '' : uriform.scheme_disabled.value + ',') + extra;
+		uriform.scheme_disabled.value = list;
+	}
+		
+	var arr = ParamList();
+	var length = arr.length;
+	var ll = list.split(',');
+	for(var i = 0; i < length; i++){
+		if(in_array(arr[i], ll)){
+			disableParam(arr[i]); setParam(arr[i], '');
+		}
+		else{ enableParam(arr[i]); }
+	}
+	
+	uri_visibility();
+}
+function enableByScheme(list=true){
+	uriform = document.forms['uri'];
+	if(list === true){ uriform.scheme_disabled.value = ''; }
+	else{
+		var old = uriform.scheme_disabled.value;
+		old = old.split(',');
+		var ll = list.split(',');
+		var length = old.length; var offset = 0;
+		for(var i = 0; i < length; i++){
+			//alert(i + '(-' + offset + '): ' +(in_array(old[i-offset], ll) ? 'found ' : 'looking for "') + old[i-offset] + '" in "' + ll.toString() + '" from "' + old.toString() + '"');
+			if(in_array(old[i-offset], ll)){
+				old.splice(i-offset,1); offset++;
+			}
+			if(old[i-offset] == '' || old[i-offset] == ','){ old.splice(i-offset,1); offset++; }
+		}
+		uriform.scheme_disabled.value = old.toString();
+	}
+	disableByScheme();
+}
+function requiredByScheme(list=false, extra=''){
+	uriform = document.forms['uri'];
+	if(extra === ''){ 
+		if(list === false){ list = uriform.scheme_required.value; }
+		else{ uriform.scheme_required.value = list; }
+	}
+	else{
+		if(list === true){
+			list = (uriform.scheme_required.value == '' ? '' :  uriform.scheme_required.value + ',') + extra;
+		}
+		uriform.scheme_required.value = list;
+	}
+	
+	var llist = list.split(',');
+	var lar = [];
+	var ll = [];
+	for(var i = 0; i < llist.length; i++){
+		var x = llist[i].indexOf('=');
+		if(x == -1){ ll[i] = llist[i]; }
+		else{
+			var name = llist[i].substr(0,x);
+			var value = llist[i].substr(x+1,llist[i].length - (x - 1));
+			lar[name] = value;
+			//ll[i] = name;
+		}
+	}
+	var arr = ParamList();
+	var length = arr.length;
+	//var ll = list.split(',');
+	for(var i = 0; i < length; i++){
+		var notset = (uriform.elements[arr[i]].type == 'checkbox' ? (uriform.elements[arr[i]].checked ? false : true) : (uriform.elements[arr[i]].value == '' ? true : false) );
+		document.getElementById("req_" + arr[i]).setAttribute("class", (in_array(arr[i], ll) ? "aterisk" + (notset ? '' : " succesfull") : "aterisk hidden"));
+		uriform.elements[arr[i]].setAttribute("class", (in_array(arr[i], ll) ? arr[i] + " required" + (notset ? '' : " succesfull") : arr[i] + " optional"));
+		document.getElementById(arr[i] + "_main").setAttribute("class", (in_array(arr[i], ll) ? "required" + (notset ? '' : " succesfull") : "optional" + (uriform.elements[arr[i]].disabled ? ' disabled' : '') ));
+	}
+	for(key in lar){
+		var bool = makebool(lar[key]);
+		if(extra === true){
+				if(uriform.elements[key].type == 'checkbox'){
+					alert('checkbox: ' + key + ' = ' + lar[key] + ' {' + bool + '}');
+					//uriform.elements[key].checked = bool;
+					if(bool === true || bool === false ){ uriform.elements[key].checked = bool; }
+					//else{ uriform.elements[key].value = lar[key]; }
+				}
+				else{
+					uriform.elements[key].value = lar[key].substr(0, (lar[key].indexOf('*') == -1 ? lar[key].length : lar[key].indexOf('*') ));
+				}
+		}
+		//alert(key + ' := ' + lar[key]);
+		var notset = (uriform.elements[key].type == 'checkbox' ? (uriform.elements[key].checked === bool ? false : true) : (lar[key].indexOf('*') == -1 ? (uriform.elements[key].value == lar[key] ? false : true) : (uriform.elements[key].value.substr(0, lar[key].indexOf('*') ) == lar[key].substr(0, lar[key].indexOf('*') ) ? false : true) ));
+		document.getElementById("req_" + key).setAttribute("class", "aterisk" + (notset ? '' : " succesfull"));
+		uriform.elements[key].setAttribute("class", key + " required" + (notset ? '' : " succesfull") );
+		document.getElementById(key + "_main").setAttribute("class",  "required" + (notset ? '' : " succesfull") );
+		
+		//uri_visibility();
+	}
+}
+function in_array(needle, haystack){
+	for(var key in haystack){
+		if(needle === haystack[key]){ return true; }
+	}
+	return false;
+}
+function makebool(b){
+	if(b == true || b == 1 || b == 'true' ){ return true; }
+	else{
+		if(b == false || b == 0 || b == 'false' ){ return false; }
+		else{ return b; }
+	}
+}
+function queryexpand(expand=false, rebuild=false){
+	uriform = document.forms['uri'];
+	if(expand === false){ //implode query
+		if(rebuild!==false){
+		
+		}
+		uriform.query.type = "text";
+		document.getElementById('query_canvas').style.visibility = "hidden";
+		document.getElementById('query_main').style.visibility = "visible";
+	}
+	else{ //expand!!
+		if(rebuild!==false){
+			var lines = [];
+			var qset = uriform.query.value.split(uriform.divider.value); //&
+			for(var i in qset){
+				var x = qset[i].indexOf(uriform.assigner.value); //=
+				if(x !== -1){
+					var key = qset[i].substr(0,x);
+					var value = qset[i].substr(x+1,qset[i].length - (x-1));
+					lines[i] = '<div><input class="key" name="query_key_' + i + '" value="' + key + '"/></div><div>' + uriform.assigner.value /*=*/ + '</div><div><input class="value" name="query_value_' + i + '" value="' + value + '" /></div>';
+			//		lines[i] = key + ' := ' + value + "\n";
+			//		lines[i] = '[' + key + '] := [' + value + "]\n";
+				}
+			}
+			//alert(lines.toString());
+			document.getElementById('query_canvas').innerHTML = '<input type="hidden" name="query_range" value="' + qset.length + '" />' + lines.join('<div class="lightweight">' + uriform.divider.value /*&*/ + '</div><br/>');
+		}
+		uriform.query.type = "hidden";
+		document.getElementById('query_canvas').style.visibility = "visible";
+		document.getElementById('query_main').style.visibility = "hidden";
+	}
+}
+</script>
+<style>
+th, td, td span { text-align: left; margin: 0; padding: 0; vertical-align: top; } 
+.lightweight { font-weight: normal; }
+.minimal { width: 1px; white-space:nowrap; }
+span { display: table-cell; }
+td span, th span { display: inline; }
+div { display: inline-block; font-weight: bold; }
+div.span { font-weight: normal; }
+.scheme { width: 75px; }
+.user { width: 160px; }
+.pass { width: 90px; }
+.host { width: 120px; }
+.port { width: 35px; }
+.path { width: 320px; }
+.query { width: 320px; }
+.fragment { width: 75px; }
+.directory, .archive { width: 200px; }
+.filename { width: 118px; }
+.url, .uri { width: 400px; }
+.visibility.visible { color: black; font-style: normal; }
+.visibility.hidden { color: gray; font-style: italic; }
+.aterisk { font-weight: bold; color: red; white-space:nowrap; }
+.aterisk.succesfull { color: green; }
+.aterisk.hidden { display: none; }
+input:not([type=button]):not([type=checkbox]):not([type=radio]), select { border: 0; background-color: transparent; height: 21px; }
+select { vertical-align: top; padding-top: 1px; }
+input[disabled], input[readonly] { border: 0; background-color: #EEE; opacity: 0.65; filter:alpha(opacity=65); }
+input.required, select.required, select.required option { border: 0px; } /*input.required.succesfull*/
+span.required, div.required { border: 1px solid red; background-color: #FDD; }
+span.required.succesfull, div.required.succesfull { border: 1px solid green; background-color: #DFD; }
+span.optional, div.optional { border: 1px solid black; }
+span.disabled, div.disabled { border: 1px solid gray; background-color: #EEE; }
+.withbutton input[type=button] { border: 0; background-color: rgba(200,200,200,0.5); cursor: pointer; border-left: 1px solid #AAA; margin: 0 0 0 1px; padding: 0 3px 0 3px; height: 21px; font-weight: bold; color: #666; }
+input[type=button] { cursor: pointer; }
+#emailuser_main.optional, #secretpass_main.optional, #queryexpanded_main.optional, #anonymous_main.optional { border: 0; vertical-align: baseline; }
+#query_canvas input { border: 1px solid black; }
+#query_canvas .key { width: 120px; } #query_canvas .value { width: 175px; }
+input.divider, input.assigner, .masterdivider { width:12px; border: 1px solid black; text-align: center; }
+</style>
+<body onload="uri_visibility();"><!-- clearPlaceholders();disableByScheme(''); -->
+<form name="uri">
+<div class="uri">URI<span class="aterisk" id="req_uri">*</span></div>
+<span id="uri_main"><input name="uri" onChange="uri_visibility();" class="uri" readonly="true" /></span>
+<br/>
+
+<table>
+<tr>
+	<th class="scheme">scheme<span class="aterisk" id="req_scheme">*</span></th>
+	<td class="minimal">:</td><td class="minimal">//</td>
+	<th class="user">user<span class="aterisk" id="req_user">*</span> <span id="anonymous_main" class="lightweight"><input type="checkbox" name="anonymous" value="true" _checked="%anonymous(false)%" id="anon" onChange="uri_visibility('user,anonymous');" /><label for="anon" class="visibility lightweight" id="anonymouslabel"> anonymous <span class="aterisk" id="req_anonymous">*</span></label>&nbsp;</span></th>
+	<td class="minimal">:</td><th class="pass">pass<span class="aterisk" id="req_pass">*</span></th>
+	<td class="minimal">@</td><th class="host">host<span class="aterisk" id="req_host">*</span></th>
+	<td class="minimal">:</td><th class="port">port<span class="aterisk" id="req_port">*</span></th>
+	<td class="minimal">/</td><th class="path" colspan="2">path<span class="aterisk" id="req_path">*</span> <span class="lightweight">with</span> <span id="pathtype_main"><select name="pathtype"><option value="mixed" onClick="enableByScheme('directory,filename');">any (mixed) type of element</option><option value="directory" onClick="enableByScheme('directory,filename');">map structure</option><option value="archive" onClick="enableByScheme('directory,filename');">archived map structure</option><option value="urn" onClick="disableByScheme(true, 'directory,filename');">uniform resource name</option></select></span> <span class="aterisk" id="req_pathtype">*</span></th>
+	<td class="minimal"><!--?--><span id="masterdivider_main" class="disabled"><input name="masterdivider" value="=" onChange="uri_visibility('assigner,query');" maxlength="2" class="masterdivider" /><span class="aterisk" id="req_masterdivider">*</span></span></td><th class="query">query<span class="aterisk" id="req_query">*</span> <span id="queryexpanded_main" class="lightweight"><input type="checkbox" name="queryexpanded" value="true" _checked="%queryexpanded(false)%" id="expanded" onChange="uri_visibility('query');" /><label for="expanded" class="visibility lightweight" id="queryexpandedlabel"> expanded <span class="aterisk" id="req_queryexpanded">*</span></label>&nbsp;<span class="lightweight">(<em>key</em><span id="assigner_main" class="disabled"><input name="assigner" value="=" onChange="uri_visibility('divider,query');" maxlength="2" class="assigner" /><span class="aterisk" id="req_assigner">*</span></span><em>value</em><span id="divider_main" class="disabled"><input name="divider" value="&" onChange="uri_visibility('query');" maxlength="2" class="divider"/><span class="aterisk" id="req_divider">*</span></span><em>more..</em>)</span>&nbsp;</span></th>
+	<td class="minimal">#</td><th class="fragment">fragment<span class="aterisk" id="req_fragment">*</span></th><th width="100%"></th>
+</tr>
+<tr>
+<!-- scheme:    --><td><span id="scheme_main"><select name="scheme" onChange="uri_visibility();" class="scheme">
+		<option value='' onClick="clearPlaceholders(true, true);requiredByScheme('scheme')"></option>
+		<option onClick="clearPlaceholders(true, true);disableByScheme('host,port,query,fragment,user,pass,secretpass,emailuser,directory,filename');requiredByScheme('path,pathtype=urn,assigner=:,divider=;,masterdivider=;',true);">urn</option>
+		<option onClick="clearPlaceholders(true, true);disableByScheme('host,port,query,fragment,user,pass,secretpass,emailuser,assigner,divider,masterdivider');requiredByScheme('path,directory,pathtype=directory');">file</option>
+		<option onClick="clearPlaceholders(true, true);setPort(80, true);setHost('localhost', true);requiredByScheme('host,pathtype=directory,assigner==,divider=&,masterdivider=?',true);">http</option>
+		%scheme-option-list%
+		<option onClick="clearPlaceholders(true, true);setPort(3306, true);setHost('localhost', true);">mysql</option>
+		<option onClick="clearPlaceholders();disableByScheme('host,port,fragment');setPort(993, true);setHost('gmail.com', true);requiredByScheme('user,pass,emailuser');">gmail</option>
+		<option onClick="clearPlaceholders();disableByScheme('host,port');setPath('/', true);setHost('dropbox.com', true);requiredByScheme('user,pass,emailuser,pathtype=directory',true);">dropbox</option>
+		<option onClick="clearPlaceholders(true,true);setPort('80', true);setHost('wordpress.com', true);requiredByScheme('user,pass,pathtype=mixed',true);">wordpress</option>
+</select></span></td>
+	<td><span id="scheme_postfix">:</span></td><td><span id="host_prefix">//</span></td>
+<!-- user:      --><td><span id="user_main"><input name="user" value="%user%" onChange="uri_visibility('pass,anonymous,user');" class="user" /></span></td><td><span id="pass_prefix">:</span></td>
+<!-- pass:      --><td><span id="pass_main"><input name="pass" type="password" value="%pass%" onChange="uri_visibility();" class="pass" /></span></td><td><span id="user_postfix">@</span></td>
+<!-- host:      --><td><span id="host_main"><input name="host" value="%host%" onChange="uri_visibility('port,host');" class="host" /></span></td>
+<!-- port:      --><td><span id="port_prefix">:</span></td><td><span id="port_main"><input name="port" type="number" value="%port%" onChange="uri_visibility();" class="port" /></span></td>
+<!-- path:      --><td class="auto"><span id="path_prefix">/</span></td><td colspan="2"s><span id="path_main"><input name="path" value="%path(/)%" onChange="uri_visibility();" class="path auto"/></span></td>
+<!-- query:     --><td><span id="query_prefix">?</span></td><td rowspan="3"><span id="query_main"><input name="query" value="%query%" onChange="uri_visibility('query');" class="query" /></span><div id="query_canvas" class="query">canvas</div></td>
+<!-- fragment:  --><td><span id="fragment_prefix">#</span></td><td><span id="fragment_main"><input name="fragment" value="%fragment%" onChange="uri_visibility();" class="fragment" /></span></td>
+</tr><tr>
+	<td colspan="3"></td>
+	<td class="user span"><span id="emailuser_main"><input type="checkbox" name="emailuser" value="true" checked="%emailuser(false)%" id="email" onChange="uri_visibility();" disabled="true" /><label for="email" class="visibility hidden" id="emaillabel"> email address <span class="aterisk" id="req_emailuser">*</span></label>&nbsp;</span></td>
+	<td></td><td class="pass span"><span id="secretpass_main"><input type="checkbox" name="secretpass" value="true" checked="%secret(false)%" id="secret" onChange="uri_visibility();" /><label for="secret" class="visibility" id="secretlabel"> secret <span class="aterisk" id="req_secretpass">*</span></label>&nbsp;</span></td>
+	<td colspan="5"></td>
+	<th class="directory">directory<span class="aterisk" id="req_directory">*</span></th>
+	<th>filename<span class="aterisk" id="req_filename">*</span></th>
+</tr><tr>
+	<td colspan="11" style="text-align: right;"></td>
+	<td><span id="directory_main"><input name="directory" onChange="compilePath();uri_visibility();" class="directory" /></span></td>
+	<td class="filename"><span id="filename_main"><input name="filename" onChange="compilePath();uri_visibility();" class="filename" /></span></td>
+</tr>
+</table>
+
+<!--
+<br/>
+<div class="url">URL<span class="aterisk" id="req_url">*</span></div>
+<span id="url_main"><input name="url" onChange="uri_visibility();" class="url" readonly="true" /></span>
+-->
+
+<br/>
+<br/>
+<hr/>
+
+<div>TEST:</div>
+<br/>
+
+<input type="button" value="check password visibility" onClick="uri_visibility();" />
+<input type="button" value="clear all values" onClick="clearPlaceholders(false);" />
+debug:<div class="aterisk hidden" id="req_debug">*</div> <span id="debug_main" style="display: inline;"><input name="debug" value="" _onChange="setPort(this.value);"/></span>
+
+<br/>
+<br/>
+<div>Disabled and Required:</div>
+<br/>
+disabled: <div id="scheme_disabled_main" class="disabled withbutton"><input _type="hidden" class="query" name="scheme_disabled" value="" onChange="disabledByScheme();" /><input type="button" value="&#8634;" onClick="disableByScheme();" /></div>
+required: <div id="scheme_required_main" class="disabled withbutton"><input _type="hidden" class="query" name="scheme_required" value="" onChange="requiredByScheme();" /><input type="button" value="&#8634;" onClick="requiredByScheme();" /><input type="button" value="&nbsp;!&nbsp;" onClick="requiredByScheme(this.form.scheme_required.value,true);" /></div>
+</form>
+
+</body>
+</html>

@@ -38,7 +38,7 @@ define('FAIL', 'fail');
 if(!defined('FSnode_ALLOW_CODE_EXECUTE')){ define('FSnode_ALLOW_CODE_EXECUTE', FALSE); }
 
 class FSnode extends Xnode {
-	public function Version($f=FALSE){ return '0.2.6'; }
+	public function Version($f=FALSE){ return '0.2.7'; }
 	public function Product_url($u=FALSE){ return ($u === TRUE ? "https://github.com/sentfanwyaerda/FSnode" : "http://sent.wyaerda.org/FSnode/?version=".self::Version(TRUE).'&license='.str_replace(' ', '+', self::License()) );}
 	public function Product($full=FALSE){ return "FSnode".(!($full===FALSE) ? " ".self::version(TRUE).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
 	public function License($with_link=FALSE){ return ($with_link ? '<a href="'.self::License_url().'">' : NULL).'cc-by-nd 3.0'.($with_link ? '</a>' : NULL); }
@@ -168,8 +168,18 @@ class FSnode extends Xnode {
 	}
 	
 	public function parse_url($url, $component=-1){
-		if($set = parse_url($url, $component)){ return $set; }
-		elseif(preg_match("#^([a-z0-9+.-]+)[\:]([/]+)([^\?\#]+)([\?]([^\#]+))?([\#](.*))?$#i", $url, $buffer_one)){
+		$cfext = array('zip',/*tar.*/'gz','tar','bz','rar','iso','gzip','7z'); #compressed file extensions
+		if(preg_match("#[\.](".implode('|', $cfext).")[/]#i", $url)){ #in case you request a file from an compressed archive
+			$set = parse_url($url);
+			if(preg_match("#^((.*)[\.](".implode('|', $cfext)."))([/](.*))$#", $set['path'], $buffer)){
+				$set['path'] = $buffer[1];
+				$set['path-query'] = $buffer[4];
+				if(!preg_match("#".$buffer[3]."#", $set['scheme'])){ $set['scheme'] = $buffer[3].'+'.$set['scheme']; }
+			}
+			return $set;
+		}
+		elseif($set = parse_url($url, $component)){ return $set; } #in all regular cases
+		elseif(preg_match("#^([a-z0-9+.-]+)[\:]([/]+)([^\?\#]+)([\?]([^\#]+))?([\#](.*))?$#i", $url, $buffer_one)){ #in failures of php::parse_url(), like email-address-usernames, or 'postgres:///'
 			$arg = array();
 			$arg['scheme'] = $buffer_one[1];
 			$hierarchical_prefix = $buffer_one[2];
@@ -227,7 +237,7 @@ class FSnode extends Xnode {
 			$hierarchal = $arg['scheme'].'://'.$arg['user'].(isset($arg['pass']) ? ':'.$arg['pass'] : NULL).(substr($arg['path'], 0, 1) != '/' ? '/' : NULL).$arg['path'];
 		}
 		elseif(isset($arg['host'])){
-			$hierarchal = $arg['scheme'].'://'.(isset($arg['user']) ? $arg['user'].(isset($arg['pass']) ? ':'.$arg['pass'] : NULL).'@' : NULL).$arg['host'].(isset($arg['port']) ? ':'.$arg['port'] : NULL).(substr($arg['path'], 0, 1) != '/' ? '/' : NULL).$arg['path'];
+			$hierarchal = $arg['scheme'].'://'.(isset($arg['user']) ? $arg['user'].(isset($arg['pass']) ? ':'.$arg['pass'] : NULL).'@' : NULL).$arg['host'].(isset($arg['port']) ? ':'.$arg['port'] : NULL).(substr($arg['path'], 0, 1) != '/' ? '/' : NULL).$arg['path'].(isset($arg['path-query']) ? $arg['path-query'] : NULL);
 		}
 		else{ $hierarchal = (isset($arg['scheme']) ? $arg['scheme'].':' : NULL).$arg['path']; }
 		$str = $hierarchal.(isset($arg['query']) ? '?'.(is_array($arg['query']) ? http_build_query($arg['query']) : $arg['query']) : NULL).(isset($arg['fragment']) ? '#'.$arg['fragment'] : NULL);
