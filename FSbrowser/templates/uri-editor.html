@@ -35,18 +35,22 @@ function uri_visibility(current=''){
 	
 	// status of the 'query'
 	document.getElementById("query_prefix").style.visibility = (uriform.query.value == '' ? 'hidden' : 'visible');
-	document.getElementById("query_prefix").innerHTML = uriform.masterdivider.value;
+	//document.getElementById("query_prefix").innerHTML = uriform.masterdivider.value;
+	changeLabelName('query', uriform.masterdivider.value, 'prefix');
 	queryexpand(uriform.queryexpanded.checked, in_array('query', current.split(',')));
 	
 	// status of the 'fragment'
 	document.getElementById("fragment_prefix").style.visibility = (uriform.fragment.value == '' ? 'hidden' : 'visible');
+
+	// status of a directory and file
+	document.getElementById("directory_postfix").style.visibility = (uriform.directory.value.length > 0 && uriform.filename.value.length > 0 ? 'visible' : 'hidden');
 	
 	//buildURL();
 	buildURI();
-	explodePath();
+	if(current != 'explode_path'){explodePath(false);}
 	requiredByScheme();
 	
-	if(current !== ''){
+	if(!(current == '' || current == 'explode_path')){
 		select = current.split(',');
 		uriform.elements[select[0]].focus();
 		uriform.elements[select[0]].select();
@@ -69,31 +73,61 @@ function setQuery(v, d=false){ setParam('query', v, d); }
 function setFragment(v, d=false){ setParam('fragment', v, d); }
 function buildURL(){
 	uriform = document.forms['uri'];
-	var url = uriform.scheme.value + ":" + (uriform.host.value == '' ? '' : "//" + uriform.host.value + (uriform.port.value == '' ? '' : ':' + uriform.port.value)) + (uriform.path.value == '' ? '' : (uriform.path.value.substr(0,1) == '/' || uriform.pathtype.value == 'urn' ? '' : '/') + uriform.path.value) ;
+	var url = uriform.scheme.value + ":" + (uriform.host.value == '' ? '' : "//" + uriform.host.value + (uriform.port.value == '' ? '' : ':' + uriform.port.value)) + (uriform.path.value == '' ? '' : (uriform.path.value.substr(0,1) == '/' || uriform.pathtype.value == 'urn' || uriform.pathtype.value == 'database' ? '' : '/') + uriform.path.value) ;
 	setURL(url);
 }
 function buildURI(){
 	uriform = document.forms['uri'];
-	var uri = uriform.scheme.value + ":" + (uriform.host.value == '' ? '' : "//") + (uriform.user.value == '' ? '' : uriform.user.value + (uriform.pass.value == '' || uriform.secretpass.checked ? '' : ':' + uriform.pass.value) + (uriform.host.value == '' ? '' : '@')) + (uriform.host.value == '' ? '' : uriform.host.value + (uriform.port.value == '' ? '' : ':' + uriform.port.value) ) + (uriform.path.value == '' ? (uriform.query.value == '' && uriform.fragment.value == '' || uriform.pathtype.value == 'urn' ? '' : '/') : (uriform.path.value.substr(0,1) == '/' || uriform.pathtype.value == 'urn' ? '' : '/') + uriform.path.value) + (uriform.query.value == '' ? '' : uriform.masterdivider.value + uriform.query.value) + (uriform.fragment.value == '' ? '' : '#'+ uriform.fragment.value) ;
+	var uri = uriform.scheme.value + ":" + (uriform.host.value == '' ? '' : "//") + (uriform.user.value == '' ? '' : uriform.user.value + (uriform.pass.value == '' || uriform.secretpass.checked ? '' : ':' + uriform.pass.value) + (uriform.host.value == '' ? '' : '@')) + (uriform.host.value == '' ? '' : uriform.host.value + (uriform.port.value == '' ? '' : ':' + uriform.port.value) ) + (uriform.path.value == '' ? (uriform.query.value == '' && uriform.fragment.value == '' || uriform.pathtype.value == 'urn' || uriform.pathtype.value == 'database' ? '' : '/') : (uriform.path.value.substr(0,1) == '/' || uriform.pathtype.value == 'urn' || uriform.pathtype.value == 'database' ? '' : '/') + uriform.path.value) + (uriform.query.value == '' ? '' : uriform.masterdivider.value + uriform.query.value) + (uriform.fragment.value == '' ? '' : '#'+ uriform.fragment.value) ;
 	setURI(uri);
 }
 function compilePath(){
 	uriform = document.forms['uri'];
-	uriform.path.value = uriform.directory.value + uriform.filename.value;
+	var archive = (uriform.elements['archive'].disabled == false ? uriform.archive.value : '');
+	var archivetype = (uriform.elements['archivetype'].disabled == false ? uriform.archivetype.value : '');
+	var directory = (uriform.elements['directory'].disabled == false ? uriform.directory.value : '');
+	var filename = (uriform.elements['filename'].disabled == false ? uriform.filename.value : '');
+	uriform.path.value = (archive.length > 1 ? (archive.substr(0,1) == '/' ? '' : '/') + archive + archivetype : '') +  (directory.substr(0,1) != '/' && archivetype != '/' && (directory.length > 0 || filename.length > 0) ? '/' : '') + directory + (directory.substr(-1,1) == '/' ? '' : (!(directory.length==0) ? '/' : '')) + filename;
 }
-function explodePath(){
+function explodePath(visibility=true){
 	uriform = document.forms['uri'];
-	var i = uriform.path.value.lastIndexOf('/') + 1;
-	if(i == -1){ uriform.directory.value = ''; uriform.filename.value = uriform.path.value; }
-	else{
-		uriform.directory.value = (uriform.path.value.substr(0,1) == '/' ? '' : '/') + uriform.path.value.substr(0,i);
-		uriform.filename.value = uriform.path.value.substr(i, uriform.path.value.length - i );
+
+	var artype = uriform.archivetype;
+	/*fix*/ uriform.path.value = (uriform.path.value.substr(0,1)=='/' ? uriform.path.value.substr(1,uriform.path.value.length) : uriform.path.value);
+	var vpath = uriform.path.value;
+
+	if(uriform.archive.disabled != true){
+		/*extract archive from url*/
+		for(i=1;i <= artype.options.length; i++){
+			if(i == artype.options.length){ i = 0; } /* the order processed is: skip the first (i=0) and affix first after last (i=artype.options.length-1) */
+			var architype = artype.options[i].value;
+			var b = uriform.path.value.indexOf(architype);
+			var a = uriform.path.value.indexOf(architype + (architype.substr(-1,1) != '/' ? '/' : ''));
+			if((architype.length > 0 || uriform.archivetype.value == '/') && b != -1){
+				uriform.archive.value = uriform.path.value.substr((uriform.path.value.substr(0,1) == '/' ? 1 : 0),(uriform.path.value.substr(0,1) == '/' ? (a == -1 ? b+1 : a+1) : (a == -1 ? b : a) ));
+				uriform.archivetype.value = architype;
+	//			alert('vpath ' + architype + ' (' + b + '|' + a + '+' + architype.length + ',' + vpath.length + ') = ' + vpath);
+				vpath = (a != -1 ? vpath.substr(a + architype.length , vpath.length) : '');
+				/*fix*/ if(vpath.substr(0,1)=='/'){ vpath = vpath.substr(1,vpath.length);}
+				/*break*/ i = artype.options.length +2;
+			}
+			if(i==0){ /*break*/ i = artype.options.length +2; }
+		}
+	//	alert(uriform.archive.value + '{' + uriform.archivetype.value + "} & " + vpath);
 	}
+	
+	var i = vpath.lastIndexOf('/') + 1;
+	if(i == -1){ uriform.directory.value = ''; uriform.filename.value = vpath; }
+	else{
+		uriform.directory.value = /*(vpath.substr(0,1) == '/' ? '' : '/') +*/ vpath.substr(0,i-1);
+		uriform.filename.value = vpath.substr(i, vpath.length - i );
+	}
+	if(visibility == true){ uri_visibility('explode_path'); }
 }
 function setURL(v, d=false){ setParam('url', v, d); }
 function setURI(v, d=false){ setParam('uri', v, d); }
 function ParamList(){
-	return ['user','pass','anonymous','host','port','path','pathtype','query','queryexpanded','fragment','emailuser','secretpass','directory','filename','scheme','uri','debug','assigner','divider','masterdivider']; //,'url'
+	return ['user','pass','anonymous','host','port','path','pathtype','query','queryexpanded','fragment','emailuser','secretpass','directory','filename','scheme','uri','debug','assigner','divider','masterdivider','archive','archivetype']; //,'url'
 }
 function clearPlaceholders(d=true, freeup=false){
 	var arr = ParamList();
@@ -202,6 +236,7 @@ function requiredByScheme(list=false, extra=''){
 				}
 				else{
 					uriform.elements[key].value = lar[key].substr(0, (lar[key].indexOf('*') == -1 ? lar[key].length : lar[key].indexOf('*') ));
+					if(key == "pathtype"){ force_pathtype(); /*alert("pathtype is being set!");*/ }
 				}
 		}
 		//alert(key + ' := ' + lar[key]);
@@ -258,9 +293,43 @@ function queryexpand(expand=false, rebuild=false){
 		document.getElementById('query_main').style.visibility = "hidden";
 	}
 }
+function force_pathtype(){
+	uriform = document.forms['uri'];
+	switch(uriform.pathtype.value){
+		case 'mixed': enableByScheme('directory,filename,archive,archivetype'); changeLabelName(); break;
+		case 'archive': enableByScheme('directory,filename,archive,archivetype'); requiredByScheme('assigner==,divider=&,masterdivider=?',true); changeLabelName();  break;
+		case 'directory': enableByScheme('directory,filename');disableByScheme(true, 'archive,archivetype'); requiredByScheme('assigner==,divider=&,masterdivider=?',true); changeLabelName();  break;
+		case 'urn': disableByScheme('archive,archivetype'); requiredByScheme('assigner=:,divider=;,masterdivider=;',true); changeLabelName('directory','namespace'); changeLabelName('filename','resource'); break;
+		case 'database': enableByScheme('archive'); disableByScheme('directory'); requiredByScheme('archive,archivetype=/,masterdivider=/,divider=;,assigner=',true); changeLabelName('archive','database'); changeLabelName('archivetype',''); changeLabelName('filename','table'); changeLabelName('directory',''); break;
+		default:
+	}
+	/*fix*/ changeLabelName('query', uriform.masterdivider.value, 'prefix');
+	//requiredByScheme(true,true);
+	//uri_visibility();
+}
+function changeLabelName(name=true, value=true, label='name'){
+	if(name === true){
+		var list = ['archive','archivetype','directory','filename'];
+		for(i=0;i<list.length;i++){
+			changeLabelName(list[i], value);
+		}
+	}
+	else{
+		if(value === true){
+			switch(name){
+				case 'archivetype': value = '&nbsp;of particular type'; break;
+				default: value = name;
+			}
+		}
+		//alert(name + ': ' +document.getElementById(name + '_' + label).innerHTML);
+		document.getElementById(name + '_' + label).innerHTML = value;
+	}
+}
 </script>
 <style>
+* { font-family: arial; font-size: 11pt; }
 th, td, td span { text-align: left; margin: 0; padding: 0; vertical-align: top; } 
+th, .bottom { vertical-align: baseline; }
 .lightweight { font-weight: normal; }
 .minimal { width: 1px; white-space:nowrap; }
 span { display: table-cell; }
@@ -275,15 +344,19 @@ div.span { font-weight: normal; }
 .path { width: 320px; }
 .query { width: 320px; }
 .fragment { width: 75px; }
-.directory, .archive { width: 200px; }
+.directory { width: 190px; white-space:nowrap; }
 .filename { width: 118px; }
 .url, .uri { width: 400px; }
+.archive { width: 210px; text-align: right; white-space:nowrap; }
+.archivetype { width: 65px; }
 .visibility.visible { color: black; font-style: normal; }
 .visibility.hidden { color: gray; font-style: italic; }
 .aterisk { font-weight: bold; color: red; white-space:nowrap; }
+.aterisk .normal { font-weight: normal; color: black; white-space:nowrap; }
 .aterisk.succesfull { color: green; }
 .aterisk.hidden { display: none; }
-input:not([type=button]):not([type=checkbox]):not([type=radio]), select { border: 0; background-color: transparent; height: 21px; }
+input:not([type=button]):not([type=checkbox]):not([type=radio]), select { border: 0; background-color: transparent; height: 21px; } /**/
+input[type=checkbox], th select { height: 21px; }
 select { vertical-align: top; padding-top: 1px; }
 input[disabled], input[readonly] { border: 0; background-color: #EEE; opacity: 0.65; filter:alpha(opacity=65); }
 input.required, select.required, select.required option { border: 0px; } /*input.required.succesfull*/
@@ -296,6 +369,8 @@ input[type=button] { cursor: pointer; }
 #emailuser_main.optional, #secretpass_main.optional, #queryexpanded_main.optional, #anonymous_main.optional { border: 0; vertical-align: baseline; }
 #query_canvas input { border: 1px solid black; }
 #query_canvas .key { width: 120px; } #query_canvas .value { width: 175px; }
+#archivetype_main.optional, #archivetype_main.disabled /*, #archivetype_main.required, #archivetype_main.required.succesfull */ { background: transparent; }
+#archivetype_main.optional, #archivetype_main.disabled, #archivetype_main.required, #archivetype_main.required.succesfull { border: 0; }
 input.divider, input.assigner, .masterdivider { width:12px; border: 1px solid black; text-align: center; }
 </style>
 <body onload="uri_visibility();"><!-- clearPlaceholders();disableByScheme(''); -->
@@ -304,32 +379,34 @@ input.divider, input.assigner, .masterdivider { width:12px; border: 1px solid bl
 <span id="uri_main"><input name="uri" onChange="uri_visibility();" class="uri" readonly="true" /></span>
 <br/>
 
+
+
 <table>
 <tr>
 	<th class="scheme">scheme<span class="aterisk" id="req_scheme">*</span></th>
-	<td class="minimal">:</td><td class="minimal">//</td>
+	<td class="minimal bottom">:</td><td class="minimal bottom">//</td>
 	<th class="user">user<span class="aterisk" id="req_user">*</span> <span id="anonymous_main" class="lightweight"><input type="checkbox" name="anonymous" value="true" _checked="%anonymous(false)%" id="anon" onChange="uri_visibility('user,anonymous');" /><label for="anon" class="visibility lightweight" id="anonymouslabel"> anonymous <span class="aterisk" id="req_anonymous">*</span></label>&nbsp;</span></th>
-	<td class="minimal">:</td><th class="pass">pass<span class="aterisk" id="req_pass">*</span></th>
-	<td class="minimal">@</td><th class="host">host<span class="aterisk" id="req_host">*</span></th>
-	<td class="minimal">:</td><th class="port">port<span class="aterisk" id="req_port">*</span></th>
-	<td class="minimal">/</td><th class="path" colspan="2">path<span class="aterisk" id="req_path">*</span> <span class="lightweight">with</span> <span id="pathtype_main"><select name="pathtype"><option value="mixed" onClick="enableByScheme('directory,filename');">any (mixed) type of element</option><option value="directory" onClick="enableByScheme('directory,filename');">map structure</option><option value="archive" onClick="enableByScheme('directory,filename');">archived map structure</option><option value="urn" onClick="disableByScheme(true, 'directory,filename');">uniform resource name</option></select></span> <span class="aterisk" id="req_pathtype">*</span></th>
+	<td class="minimal bottom">:</td><th class="pass">pass<span class="aterisk" id="req_pass">*</span></th>
+	<td class="minimal bottom">@</td><th class="host">host<span class="aterisk" id="req_host">*</span></th>
+	<td class="minimal bottom">:</td><th class="port">port<span class="aterisk" id="req_port">*</span></th>
+	<td class="minimal bottom">/</td><th class="path" colspan="2">path<span class="aterisk" id="req_path">*</span> <span class="lightweight">with</span> <span id="pathtype_main"><select name="pathtype" onChange="force_pathtype();"><option value="mixed">any (mixed) type of element</option><option value="directory">map structure</option><option value="archive">archived map structure</option><option value="urn">uniform resource name</option><option value="database">database system</option></select></span> <span class="aterisk" id="req_pathtype">*</span></th>
 	<td class="minimal"><!--?--><span id="masterdivider_main" class="disabled"><input name="masterdivider" value="=" onChange="uri_visibility('assigner,query');" maxlength="2" class="masterdivider" /><span class="aterisk" id="req_masterdivider">*</span></span></td><th class="query">query<span class="aterisk" id="req_query">*</span> <span id="queryexpanded_main" class="lightweight"><input type="checkbox" name="queryexpanded" value="true" _checked="%queryexpanded(false)%" id="expanded" onChange="uri_visibility('query');" /><label for="expanded" class="visibility lightweight" id="queryexpandedlabel"> expanded <span class="aterisk" id="req_queryexpanded">*</span></label>&nbsp;<span class="lightweight">(<em>key</em><span id="assigner_main" class="disabled"><input name="assigner" value="=" onChange="uri_visibility('divider,query');" maxlength="2" class="assigner" /><span class="aterisk" id="req_assigner">*</span></span><em>value</em><span id="divider_main" class="disabled"><input name="divider" value="&" onChange="uri_visibility('query');" maxlength="2" class="divider"/><span class="aterisk" id="req_divider">*</span></span><em>more..</em>)</span>&nbsp;</span></th>
-	<td class="minimal">#</td><th class="fragment">fragment<span class="aterisk" id="req_fragment">*</span></th><th width="100%"></th>
+	<td class="minimal bottom">#</td><th class="fragment">fragment<span class="aterisk" id="req_fragment">*</span></th><th width="100%"></th>
 </tr>
 <tr>
 <!-- scheme:    --><td><span id="scheme_main"><select name="scheme" onChange="uri_visibility();" class="scheme">
 		<option value='' onClick="clearPlaceholders(true, true);requiredByScheme('scheme')"></option>
 		<option onClick="clearPlaceholders(true, true);disableByScheme('host,port,query,fragment,user,pass,secretpass,emailuser,directory,filename');requiredByScheme('path,pathtype=urn,assigner=:,divider=;,masterdivider=;',true);">urn</option>
-		<option onClick="clearPlaceholders(true, true);disableByScheme('host,port,query,fragment,user,pass,secretpass,emailuser,assigner,divider,masterdivider');requiredByScheme('path,directory,pathtype=directory');">file</option>
-		<option onClick="clearPlaceholders(true, true);setPort(80, true);setHost('localhost', true);requiredByScheme('host,pathtype=directory,assigner==,divider=&,masterdivider=?',true);">http</option>
+		<option onClick="clearPlaceholders(true, true);disableByScheme('host,port,query,fragment,user,pass,secretpass,emailuser,assigner,divider,masterdivider,archive,archivetype');requiredByScheme('path,directory,pathtype=directory');">file</option>
+		<option onClick="clearPlaceholders(true, true);disableByScheme('archive,archivetype');setPort(80, true);setHost('localhost', true);requiredByScheme('host,pathtype=directory,assigner==,divider=&,masterdivider=?',true);">http</option>
 		%scheme-option-list%
-		<option onClick="clearPlaceholders(true, true);setPort(3306, true);setHost('localhost', true);">mysql</option>
-		<option onClick="clearPlaceholders();disableByScheme('host,port,fragment');setPort(993, true);setHost('gmail.com', true);requiredByScheme('user,pass,emailuser');">gmail</option>
+		<option onClick="clearPlaceholders(true, true);requiredByScheme('archive,archivetype=/,pathtype=database');setPort(3306, true);setHost('localhost', true);changeLabelName('archive','database');">mysql</option>
+		<option onClick="clearPlaceholders();disableByScheme('host,port,fragment,archive,archivetype');setPort(993, true);setHost('gmail.com', true);requiredByScheme('user,pass,emailuser');">gmail</option>
 		<option onClick="clearPlaceholders();disableByScheme('host,port');setPath('/', true);setHost('dropbox.com', true);requiredByScheme('user,pass,emailuser,pathtype=directory',true);">dropbox</option>
-		<option onClick="clearPlaceholders(true,true);setPort('80', true);setHost('wordpress.com', true);requiredByScheme('user,pass,pathtype=mixed',true);">wordpress</option>
+		<option onClick="clearPlaceholders(true,true);disableByScheme('archive,archivetype');setPort('80', true);setHost('wordpress.com', true);requiredByScheme('user,pass,pathtype=mixed',true);">wordpress</option>
 </select></span></td>
 	<td><span id="scheme_postfix">:</span></td><td><span id="host_prefix">//</span></td>
-<!-- user:      --><td><span id="user_main"><input name="user" value="%user%" onChange="uri_visibility('pass,anonymous,user');" class="user" /></span></td><td><span id="pass_prefix">:</span></td>
+<!-- user:      --><td><span id="user_main"><input name="user" value="%user%" onClick="if(this.form.anonymous.checked === true){ this.form.anonymous.checked = false; this.disabled = false; this.value.focus(); }" onChange="uri_visibility('pass,anonymous,user');" class="user" /></span></td><td><span id="pass_prefix">:</span></td>
 <!-- pass:      --><td><span id="pass_main"><input name="pass" type="password" value="%pass%" onChange="uri_visibility();" class="pass" /></span></td><td><span id="user_postfix">@</span></td>
 <!-- host:      --><td><span id="host_main"><input name="host" value="%host%" onChange="uri_visibility('port,host');" class="host" /></span></td>
 <!-- port:      --><td><span id="port_prefix">:</span></td><td><span id="port_main"><input name="port" type="number" value="%port%" onChange="uri_visibility();" class="port" /></span></td>
@@ -340,12 +417,14 @@ input.divider, input.assigner, .masterdivider { width:12px; border: 1px solid bl
 	<td colspan="3"></td>
 	<td class="user span"><span id="emailuser_main"><input type="checkbox" name="emailuser" value="true" checked="%emailuser(false)%" id="email" onChange="uri_visibility();" disabled="true" /><label for="email" class="visibility hidden" id="emaillabel"> email address <span class="aterisk" id="req_emailuser">*</span></label>&nbsp;</span></td>
 	<td></td><td class="pass span"><span id="secretpass_main"><input type="checkbox" name="secretpass" value="true" checked="%secret(false)%" id="secret" onChange="uri_visibility();" /><label for="secret" class="visibility" id="secretlabel"> secret <span class="aterisk" id="req_secretpass">*</span></label>&nbsp;</span></td>
-	<td colspan="5"></td>
-	<th class="directory">directory<span class="aterisk" id="req_directory">*</span></th>
-	<th>filename<span class="aterisk" id="req_filename">*</span></th>
+	<td></td>
+	<th colspan="4"><span id="archive_name">archive</span><span class="aterisk" id="req_archive">*</span><span class="aterisk" id="req_archivetype"><span class="normal" id="archivetype_name">&nbsp;of particular type</span>*</span></th>
+	<th class="directory"><span id="directory_name">directory</span><span class="aterisk" id="req_directory">*</span></th>
+	<th><span id="filename_name">filename</span><span class="aterisk" id="req_filename">*</span></th>
 </tr><tr>
-	<td colspan="11" style="text-align: right;"></td>
-	<td><span id="directory_main"><input name="directory" onChange="compilePath();uri_visibility();" class="directory" /></span></td>
+	<td colspan="5" style="text-align: right;"></td>
+	<td colspan="6" class="archive"><span id="archive_main"><input name="archive" onChange="compilePath();uri_visibility();" class="archive" /><span id="archivetype_main"><select name="archivetype" onChange="compilePath();uri_visibility();" class="archivetype"><option>/</option><option>.tar.gz</option><option>.tgz</option><option>.iso</option><option>.tar</option><option>.git</option><option>.rar</option><option>.bz</option><option>.zip</option><option>.7z</option><option>.db</option></select></span></span></td>
+	<td><span id="directory_main"><input name="directory" onChange="compilePath();uri_visibility();" class="directory" /></span><span id="directory_postfix">/</span></td>
 	<td class="filename"><span id="filename_main"><input name="filename" onChange="compilePath();uri_visibility();" class="filename" /></span></td>
 </tr>
 </table>

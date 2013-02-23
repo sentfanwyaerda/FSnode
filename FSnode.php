@@ -38,7 +38,7 @@ define('FAIL', 'fail');
 if(!defined('FSnode_ALLOW_CODE_EXECUTE')){ define('FSnode_ALLOW_CODE_EXECUTE', FALSE); }
 
 class FSnode extends Xnode {
-	public function Version($f=FALSE){ return '0.2.7'; }
+	public function Version($f=FALSE){ return '0.2.8'; }
 	public function Product_url($u=FALSE){ return ($u === TRUE ? "https://github.com/sentfanwyaerda/FSnode" : "http://sent.wyaerda.org/FSnode/?version=".self::Version(TRUE).'&license='.str_replace(' ', '+', self::License()) );}
 	public function Product($full=FALSE){ return "FSnode".(!($full===FALSE) ? " ".self::version(TRUE).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
 	public function License($with_link=FALSE){ return ($with_link ? '<a href="'.self::License_url().'">' : NULL).'cc-by-nd 3.0'.($with_link ? '</a>' : NULL); }
@@ -176,60 +176,135 @@ class FSnode extends Xnode {
 				$set['path-query'] = $buffer[4];
 				if(!preg_match("#".$buffer[3]."#", $set['scheme'])){ $set['scheme'] = $buffer[3].'+'.$set['scheme']; }
 			}
-			return $set;
+			//return $set;
 		}
-		elseif($set = parse_url($url, $component)){ return $set; } #in all regular cases
+		elseif($set = parse_url($url, $component)){ #in all regular cases
+			//return $set;
+		} 
 		elseif(preg_match("#^([a-z0-9+.-]+)[\:]([/]+)([^\?\#]+)([\?]([^\#]+))?([\#](.*))?$#i", $url, $buffer_one)){ #in failures of php::parse_url(), like email-address-usernames, or 'postgres:///'
-			$arg = array();
-			$arg['scheme'] = $buffer_one[1];
+			$set = array();
+			$set['scheme'] = $buffer_one[1];
 			$hierarchical_prefix = $buffer_one[2];
 			$hierarchical = $buffer_one[3];
-			#/*debug*/ $arg['b_one'] = print_r($buffer_one, TRUE);
+			#/*debug*/ $set['b_one'] = print_r($buffer_one, TRUE);
 			if(strlen($hierarchical_prefix) == 2){
 				preg_match("#^([^/]+)(.*)$#i", $hierarchical, $buffer_two);
 				$authority = $buffer_two[1];
 				#scenario user:pass@domain:port gets filtered by parse_url, assume scheme based authentication on central server with an (emailaddress) user.
-				switch($arg['scheme']){
+				switch($set['scheme']){
 					#extend for more cases!!!
-					case 'dropbox': $arg['host'] = 'dropbox.com'; break;
-					case 'imap+gmail': case 'gmail': $arg['host'] = 'gmail.com'; break;
+					case 'dropbox': $set['host'] = 'dropbox.com'; break;
+					case 'imap+gmail': case 'gmail': $set['host'] = 'gmail.com'; break;
 					default: #do nothing
 				}
 				if(preg_match("#^([^:]+)[:](.*)#i", $authority, $buffer_three) && /*is emailaddress*/ preg_match("#^([a-z0-9_-]+)@([a-z0-9.-]+)$#i", $buffer_three[1]) ){
-					$arg['user'] = $buffer_three[1];
-					$arg['pass'] = $buffer_three[2];
+					$set['user'] = $buffer_three[1];
+					$set['pass'] = $buffer_three[2];
 				} else {
-					$arg['user'] = $authority;
+					$set['user'] = $authority;
 				}
-				$arg['path'] = $buffer_two[2];
+				$set['path'] = $buffer_two[2];
 			}
-			elseif($arg['scheme'] == 'postgres' && strlen($hierarchical_prefix) == 3){
-				$arg['host'] = 'localhost';
-				$arg['path'] = $hierarchical;
+			elseif($set['scheme'] == 'postgres' && strlen($hierarchical_prefix) == 3){
+				$set['host'] = 'localhost';
+				$set['path'] = $hierarchical;
 			}
 			else{
-				$arg['path'] = $hierarchical_prefix.$hierarchical;
+				$set['path'] = $hierarchical_prefix.$hierarchical;
 			}
-			if(isset($buffer_one[5])){ $arg['query'] = $buffer_one[5]; }
-			if(isset($buffer_one[7])){ $arg['fragment'] = $buffer_one[7]; }
-			
-			if($component == -1 || is_array($component)){ return $arg; }
-			else{
-				/*fix*/ foreach(array('scheme','host','port','user','pass','path','query','fragment') as $c){ if(!isset($arg[$c])){ $arg[$c] = NULL; }}
-				switch($component){
-					case PHP_URL_SCHEME: return (string) $arg['scheme'];
-					case PHP_URL_HOST: return (string) $arg['host'];
-					case PHP_URL_PORT: return (int) $arg['port'];
-					case PHP_URL_USER: return (string) $arg['user'];
-					case PHP_URL_PASS: return (string) $arg['pass'];
-					case PHP_URL_PATH: return (string) $arg['path'];
-					case PHP_URL_QUERY: return (string) $arg['query'];
-					case PHP_URL_FRAGMENT: return (string) $arg['fragment'];
-					default: return $arg;
-				}
-			}
+			if(isset($buffer_one[5])){ $set['query'] = $buffer_one[5]; }
+			if(isset($buffer_one[7])){ $set['fragment'] = $buffer_one[7]; }
+			//return $set;
 		}
 		else { return FALSE; }
+		
+		#analyses of $set['path']:
+		$set['pathtype'] = 'directory'; #mixed,urn,directory,archive,database,..
+		$set['separator'] = ($set['pathtype'] == 'urn' ? ':' : '/');
+		switch($set['pathtype']){
+			case 'urn':
+				if(preg_match("#^(([^".$set['separator']."]+)[".$set['separator']."])?(.*)$#i", $set['path'], $buffer)){
+					if(isset($buffer[2])){ $set['namespace'] = $buffer[2]; }
+					$set['resource'] = $buffer[3];
+				}
+				break;
+			case 'database':
+				if(preg_match("#^([^".$set['separator']."]+)([".$set['separator']."](.*))?$#i", $set['path'], $buffer)){
+					$set['database'] = $buffer[1];
+					if(isset($buffer[3])){ $set['table'] = $buffer[3]; }
+				}
+				break;
+			default:
+				$set['pathtype'] = 'directory';
+				foreach(array('.zip','.tgz','.tar.gz','.bz','.7z') as $ext){
+					if(preg_match("#".$ext."#i", $set['path'])){ $rawpath = preg_replace("#".$ext."#i", "×", $set['path']); $rawext = $ext; }
+				}
+				if(isset($rawpath) && preg_match("#^([^×]+)[×][".$set['separator']."]?(.*)$#i", $rawpath, $buffer)){
+					$set['archive'] = $buffer[1];
+					$set['archivetype'] = $rawext;
+					$set['fullarchive'] = $set['archive'].$set['archivetype'];
+					/*fix*/ if(substr($set['fullarchive'], 0,1) == $set['separator']){ $set['fullarchive'] = substr($set['fullarchive'],1); }
+					/*fix*/ if(substr($set['fullarchive'], -1) == $set['separator']){ $set['fullarchive'] = substr($set['fullarchive'],0,-1); }
+					$remainingpath = $buffer[2];
+					$set['pathtype'] = 'archive';
+				}
+				/*fix*/ if(!isset($remainingpath)){ $remainingpath = $set['path']; }
+				$set['directory'] = dirname($remainingpath);
+				$set['filename'] = basename($remainingpath);
+				if(isset($set['filename']) && preg_match("#^(.*)[.]([^.]+)$#i", $set['filename'], $buffer)){
+					$set['filetype'] = $buffer[2]; #extension
+					//$set['filemime'] = #?
+				}
+		}
+		
+		#analyses of $set['query']:
+		//$set['assigner'] = (=|:);
+		//$set['divider'] = (&|;)
+		//$set['masterdivider'] =  ($set['pathtype'] == 'urn' ? ';' : '?');
+		parse_str($set['query'], $set['queryexpanded']);
+		$set['queryamount'] = count($set['queryexpanded']);
+		
+		#analyses of $set['user']
+		//$set['anonymous'] = (yes|no);
+		//$set['emailaddress'] = (yes|no);
+		
+		if($component === -1 || (is_array($component) && count($component) == 0) || !is_array($set)){ return $set; }
+		elseif(is_array($component)){
+			$subset = array();
+			foreach($component as $key){
+				switch($key){
+					case PHP_URL_SCHEME: $subset['scheme'] = (string) $set['scheme']; break;
+					case PHP_URL_HOST: $subset['host'] = (string) $set['host']; break;
+					case PHP_URL_PORT: $subset['port'] = (int) $set['port']; break;
+					case PHP_URL_USER: $subset['user'] = (string) $set['user']; break;
+					case PHP_URL_PASS: $subset['pass'] = (string) $set['pass']; break;
+					case PHP_URL_PATH: $subset['path'] = (string) $set['path']; break;
+					case PHP_URL_QUERY: $subset['query'] = (string) $set['query']; break;
+					case PHP_URL_FRAGMENT: $subset['fragment'] = (string) $set['fragment']; break;
+					default: 
+						if(isset($set[$key])){ $subset[strtolower($key)] = $set[$key]; }
+						#else ignores $key
+				}
+			}
+			return $subset;
+		}
+		else{
+			/*fix*/ foreach(array('scheme','host','port','user','pass','path','query','fragment') as $c){ if(!isset($set[$c])){ $set[$c] = NULL; }}
+			if(isset($set[strtolower($component)])){ return $set[strtolower($component)]; }
+			switch($component){
+				case PHP_URL_SCHEME: return (string) $set['scheme']; break;
+				case PHP_URL_HOST: return (string) $set['host']; break;
+				case PHP_URL_PORT: return (int) $set['port']; break;
+				case PHP_URL_USER: return (string) $set['user']; break;
+				case PHP_URL_PASS: return (string) $set['pass']; break;
+				case PHP_URL_PATH: return (string) $set['path']; break;
+				case PHP_URL_QUERY: return (string) $set['query']; break;
+				case PHP_URL_FRAGMENT: return (string) $set['fragment']; break;
+				default:
+					if(isset($set[strtolower($component)])){ return $set[strtolower($component)]; }
+			}
+		}
+		return $set;
 	}
 	public function rebuild_url($arg=array()){
 		if(isset($arg['user']) && /*is_emailaddress*/ preg_match("#^[a-z0-9_-]+[@][a-z0-9.-]+$#i", $arg['user']) && in_array($arg['scheme'], array('dropbox','imap+gmail'))){
@@ -361,6 +436,14 @@ class FSnode extends Xnode {
 	public /*bool*/ function refresh($tag=NULL){
 		return TRUE;
 	}
-	
+	public /*string*/ function mime_content_type($filename){
+		if( function_exists('finfo_open') && function_exists('finfo_file') && function_exists('finfo_close') ){
+			$finfo = finfo_open(FILEINFO_MIME_TYPE);
+			$mime = finfo_file($finfo, $filename);
+			finfo_close($finfo);
+			return $mime;
+		}
+		return NULL;
+	}
 }
 ?>
