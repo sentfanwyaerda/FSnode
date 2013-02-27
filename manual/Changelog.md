@@ -1,4 +1,7 @@
 
+###v0.2.9
+- **ALLOW_FSbrowser** determines if **FSbrowser** is usable
+
 ###v0.2.8
 - expanded the analysed elements **FSnode::parse_url()** can give; filename, directory, archive, database, table, namespace, resource, separator, masterdivider, divider, assigner. And allows for returning a selection of those elements.
 - adds **FSnode::mime_content_type()** method to the default class diagram

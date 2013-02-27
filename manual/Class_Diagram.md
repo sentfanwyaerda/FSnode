@@ -10,7 +10,7 @@
 - (int) FSnode::write($filename, $data)
 - (bool) FSnode::delete($filename)
 - (array) FSnode::scan($directory, $sorting_order=SCANDIR_SORT_ASCENDING)
-
+*experimental:*
 - (mixed) FSnode::execute($line=NULL)
 - (bool) FSnode::refresh($tag=NULL)
 
@@ -24,7 +24,7 @@
 - (int) FSnode::fileperms($filename)
 - (int) FSnode::filesize($filename)
 - (int) FSnode::filetype($filename)
-
+*status checks:*
 - (bool) FSnode::file_exists($filename)
 - (bool) FSnode::is_dir($filename)
 - (bool) FSnode::is_executable($filename)
@@ -32,7 +32,7 @@
 - (bool) FSnode::is_readable($filename)
 - (bool) FSnode::is_writable($filename)
 - (bool) FSnode::is_writeable($filename)
-
+*system status:*
 - (float) disk_free_space($directory=NULL)
 - (float) disk_total_space($directory=NULL)
 
@@ -40,24 +40,23 @@
 - (string) FSnode::mime_content_type($filename)
 
 ### LOCAL Methods
+#### data and directory access:
+- file_get_contents($filename)
+- file_put_contents($filename, $data)
+- (bool) copy($source, $destination)
+- rename($oldname, $newname)
+- mkdir($pathname, $mode=0777, $recursive=FALSE)
+- rmdir($directory)
+- unlink()
+- scandir($directory)
+#### accessibility:
 - (bool) chmod($filename, $mode)
 - (bool) chgrp($filename, $group)
 - (bool) chown($filename, $user)
-
-- (bool) copy($source, $destination)
-- file_get_contents($filename)
-- file_put_contents($filename, $data)
-
-- mkdir($pathname, $mode=0777, $recursive=FALSE)
-- rename($oldname, $newname)
-- rmdir($directory)
-- unlink()
-
+#### other
+- realpath($filename)
 - stat($filename)
 - touch($filename)
-
-- scandir($directory)
-- realpath($filename)
 
 ### Service Methods
 - FSnode::FSnode()

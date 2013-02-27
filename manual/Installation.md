@@ -15,7 +15,7 @@ define('FSnode_TEMP_DIRECTORY', dirname(__FILE__).DIRECTORY_SEPARATOR.'tmp'.DIRE
 - Set the directory where FSnode can find its extensions.
 
 ```php
-define('FSnode_EXTENSION_DIRECTORY', dirname(__FILE__).DIRECTORY_SEPARATOR.'extensions'.DIRECTORY_SEPARATOR);
+define('FSnode_EXTENSION_DIRECTORY', dirname(__FILE__).DIRECTORY_SEPARATOR.'extension'.DIRECTORY_SEPARATOR);
 ```
 
 - You are allowed to delete the *FIXES*, they are optional.
