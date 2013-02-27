@@ -38,7 +38,7 @@ define('FAIL', 'fail');
 if(!defined('FSnode_ALLOW_CODE_EXECUTE')){ define('FSnode_ALLOW_CODE_EXECUTE', FALSE); }
 
 class FSnode extends Xnode {
-	public function Version($f=FALSE){ return '0.2.8'; }
+	public function Version($f=FALSE){ return '0.2.8fix'; }
 	public function Product_url($u=FALSE){ return ($u === TRUE ? "https://github.com/sentfanwyaerda/FSnode" : "http://sent.wyaerda.org/FSnode/?version=".self::Version(TRUE).'&license='.str_replace(' ', '+', self::License()) );}
 	public function Product($full=FALSE){ return "FSnode".(!($full===FALSE) ? " ".self::version(TRUE).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
 	public function License($with_link=FALSE){ return ($with_link ? '<a href="'.self::License_url().'">' : NULL).'cc-by-nd 3.0'.($with_link ? '</a>' : NULL); }
@@ -439,7 +439,7 @@ class FSnode extends Xnode {
 	public /*string*/ function mime_content_type($filename){
 		if( function_exists('finfo_open') && function_exists('finfo_file') && function_exists('finfo_close') ){
 			$finfo = finfo_open(FILEINFO_MIME_TYPE);
-			$mime = finfo_file($finfo, $filename);
+			$mime = finfo_file($finfo, $this->_filename_attach_prefix( (string) $filename ) );
 			finfo_close($finfo);
 			return $mime;
 		}

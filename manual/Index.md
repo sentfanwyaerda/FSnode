@@ -2,6 +2,7 @@
 - [Introduction](https://github.com/sentfanwyaerda/FSnode/blob/master/manual/Introduction.md)
 - [Installation](https://github.com/sentfanwyaerda/FSnode/blob/master/manual/Installation.md)
 - Extension Instructions Set ([How To](https://github.com/sentfanwyaerda/FSnode/blob/master/manual/HowTo.md) make your own extension)
+- [Class Diagram](https://github.com/sentfanwyaerda/FSnode/blob/master/manual/Class_Diagram.md)
 - [Hooks](https://github.com/sentfanwyaerda/FSnode/blob/master/manual/Hooks.md)
 - Public Methods [Library](https://github.com/sentfanwyaerda/FSnode/blob/master/manual/Library.md)
 

@@ -26,7 +26,7 @@ require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'extra-library.php');
 session_start();
 
 class FSbrowser{
-	public function Version($f=FALSE){ return '0.2.1'; }
+	public function Version($f=FALSE){ return '0.2.2'; }
 	public function Product_url($u=FALSE){ return ($u === TRUE ? "https://github.com/sentfanwyaerda/FSnode" : "http://sent.wyaerda.org/FSbrowser/".'?version='.self::Version(TRUE).'&license='.str_replace(' ', '+', self::License()) );}
 	public function Product($full=FALSE){ return "FSnode Browser".($full ? " ".self::version(TRUE).(class_exists('FSnode') && method_exists('FSnode', 'Product') ? '/'.FSnode::Product(TRUE) : NULL).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
 	public function License($with_link=FALSE){ return ($with_link ? '<a href="'.self::License_url().'">' : NULL).'cc-by-nd 3.0'.($with_link ? '</a>' : NULL); }
@@ -77,22 +77,24 @@ class FSbrowser{
 		if(is_object($this->handler)){
 			$lines = array();
 			$subURI = str_replace(DIRECTORY_SEPARATOR, '/',  str_replace($this->handler->realpath('/'), '', $this->handler->realpath($subURI)) );
-			foreach($this->handler->scandir($subURI) as $f){
-				if($this->handler->realpath($subURI. DIRECTORY_SEPARATOR .$f) && !($f == '.')){
-				$lines[$f] = parse_template('templates/line.html', array(
-					'file:name.full' => ($f == '..' ? 'Parent Directory' : $f.($this->handler->is_dir($subURI. DIRECTORY_SEPARATOR .$f) ? '/' : NULL)),
-					'file:url' => str_replace(DIRECTORY_SEPARATOR, '/',  './FSbrowser.php?URI='.($f == '..' ? DIRECTORY_SEPARATOR .$this->label.dirname($subURI): DIRECTORY_SEPARATOR .$this->label.$subURI. DIRECTORY_SEPARATOR .$f) ),
-					'file:type.class' => ($f == '..' ? 'parent-directory' : ($this->handler->is_dir($subURI. DIRECTORY_SEPARATOR .$f) ? 'directory' : strtolower(preg_replace("#^(.*)[.]([a-z0-9]+)$#i", "\\2", $f)) )),
-					'file:modified.last' => date('d-M-Y H:i', $this->handler->filemtime($subURI. DIRECTORY_SEPARATOR .$f) ),
-					'file:size' => ($this->handler->file_exists($subURI. DIRECTORY_SEPARATOR .$f) && !$this->handler->is_dir($subURI. DIRECTORY_SEPARATOR .$f) ? $this->handler->filesize($subURI. DIRECTORY_SEPARATOR .$f) : NULL),
-					'file:description' => NULL,
-					'actions(file)' => NULL,
-					));
+			if($this->handler->is_dir($subURI)){
+				foreach($this->handler->scandir($subURI) as $f){
+					if($this->handler->realpath($subURI. DIRECTORY_SEPARATOR .$f) && !($f == '.')){
+					$lines[$f] = parse_template('templates/line.html', array(
+						'file:name.full' => ($f == '..' ? 'Parent Directory' : $f.($this->handler->is_dir($subURI. DIRECTORY_SEPARATOR .$f) ? '/' : NULL)),
+						'file:url' => str_replace(DIRECTORY_SEPARATOR, '/',  './FSbrowser.php?URI='.($f == '..' ? DIRECTORY_SEPARATOR .$this->label.dirname($subURI): DIRECTORY_SEPARATOR .$this->label.$subURI. DIRECTORY_SEPARATOR .$f) ),
+						'file:type.class' => ($f == '..' ? 'parent-directory' : ($this->handler->is_dir($subURI. DIRECTORY_SEPARATOR .$f) ? 'directory' : strtolower(preg_replace("#^(.*)[.]([a-z0-9]+)$#i", "\\2", $f)) )),
+						'file:modified.last' => date('d-M-Y H:i', $this->handler->filemtime($subURI. DIRECTORY_SEPARATOR .$f) ),
+						'file:size' => ($this->handler->file_exists($subURI. DIRECTORY_SEPARATOR .$f) && !$this->handler->is_dir($subURI. DIRECTORY_SEPARATOR .$f) ? $this->handler->filesize($subURI. DIRECTORY_SEPARATOR .$f) : NULL),
+						'file:description' => NULL,
+						'actions(file)' => NULL,
+						));
+					}
 				}
+				ksort($lines);
 			}
-			ksort($lines);
 			
-			$set = array('title'=>'Index of '.$subURI.'/','include:lines()'=>implode($lines),'footer'=>NULL,'URI'=>$this->URI,'label'=>$this->label);
+			$set = array('title'=>'Index of '.$subURI.'/','include:lines()'=>implode($lines),'footer'=>NULL,'URI'=>$this->URI,'label'=>$this->label,'meta-information'=>$this->build_URI_info($subURI));
 			return parse_template('templates/overview.html', $set);
 		}
 		else{
@@ -103,9 +105,56 @@ class FSbrowser{
 		$set = array('URI'=>'file:'.dirname(__FILE__).DIRECTORY_SEPARATOR, 'label'=>'local');
 		return parse_template('templates/connect.html', $set);
 	}
+	function build_URI_info($subURI=NULL){
+		$set = array(
+		#	'' => $this->handler->($URI),
+			'subURI' => $subURI,
+			'URI' => $this->URI
+		);
+		foreach(array('fileatime'=>2,'filectime'=>2,'filegroup'=>1,'fileinode'=>1,'filemtime'=>2,'fileowner'=>1,'fileperms'=>1,'filesize'=>3,'filetype'=>1,'file_exists'=>9,'is_dir'=>9,'is_executable'=>9,'is_file'=>9,'is_readable'=>9,'is_writeable'=>9,'disk_free_space'=>3,'disk_total_space'=>3,'mime_content_type'=>1 /*,'stat'=>5*/) as $method=>$action){
+			$set[$method] = $this->handler->$method($subURI);
+			switch($action){
+				case 2: /*timestamp*/ $set[$method] = date("Y-m-d H:i:s", $set[$method]); break;
+				case 3: /*filesize*/ $set[$method] = self::_humanizeFileSize($set[$method]); break;
+				case 5: /*array*/ $set[$method] = print_r($set[$method], true); break;
+				case 9: /*bool*/ $set[$method] = self::_bool_toString($set[$method]); break;
+				default: /*do nothing*/
+			}
+		}
+		/*fix*/ $set['raw'] = print_r($set, true);
+		return parse_template('templates/information.html', $set);
+	}
+	
+	
+	#Additional functions
+	private function _bool_toString($bool, $T="yes", $F="no", $E="error"){
+		return (is_string($bool) ? $bool :(is_bool($bool) ? ($bool === TRUE ? $T : $F) : $E));
+	}
+	private function _humanizeFileSize($size){
+		if ($size < 1024) {
+			return $size .'B';
+		} elseif ($size < 1048576) {
+			return round($size / 1024, 2) .'Kb';
+		} elseif ($size < 1073741824) {
+			return round($size / 1048576, 2) . 'Mb';
+		} elseif ($size < 1099511627776) {
+			return round($size / 1073741824, 2) . 'Gb';
+		} elseif ($size < 1125899906842624) {
+			return round($size / 1099511627776, 2) .'Tb';
+		} elseif ($size < 1152921504606846976) {
+			return round($size / 1125899906842624, 2) .'Pb';
+		} elseif ($size < 1180591620717411303424) {
+			return round($size / 1152921504606846976, 2) .'Eb';
+		} elseif ($size < 1208925819614629174706176) {
+			return round($size / 1180591620717411303424, 2) .'Zb';
+		} else {
+			return round($size / 1208925819614629174706176, 2) .'Yb';
+		}
+	}
+
 }
 
-if(TRUE){
+if(defined('ALLOW_FSbrowser') && ALLOW_FSbrowser === TRUE ){
 	if(function_exists('XLtrace_about_class')){ print '<pre>'; print XLtrace_about_class('FSbrowser'); print '</pre><hr/>'; }
 	#/*debug*/ if(isset($_GET)){ print '<pre>$_GET = '; print_r($_GET); print '</pre>'; }
 	#/*debug*/ if(isset($_POST)){ print '<pre>$_POST = '; print_r($_POST); print '</pre>'; }

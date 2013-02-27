@@ -9,8 +9,15 @@ git clone https://github.com/sentfanwyaerda/FSnode.git
 - Set the temporarily directory for FSnode its extensions. Some need read-write-access to buffer the flow of data. A good suggestion is */tmp/FSnode/* or the default:
 
 ```php
-define('FSnode_TEMP_DIRECTORY', dirname(__FILE__).'/tmp/');
+define('FSnode_TEMP_DIRECTORY', dirname(__FILE__).DIRECTORY_SEPARATOR.'tmp'.DIRECTORY_SEPARATOR);
 ```
+
+- Set the directory where FSnode can find its extensions.
+
+```php
+define('FSnode_EXTENSION_DIRECTORY', dirname(__FILE__).DIRECTORY_SEPARATOR.'extensions'.DIRECTORY_SEPARATOR);
+```
+
 - You are allowed to delete the *FIXES*, they are optional.
 
 ###Auto loading extensions
@@ -36,4 +43,10 @@ FSnode::load_extension('ftp');
 chmod 0644 ../FSnode -R
 chmod +x ../FSnode; chmod +x ../FSnode/extension; chmod +x ../FSnode/manual
 chmod +wx ../FSnode/tmp
+```
+
+- You can disable **[FSbrowser]()** by not defining **ALLOW_FSbrowser** or setting it to **FALSE**.
+
+```php
+define('ALLOW_FSbrowser', FALSE);
 ```
