@@ -1,3 +1,6 @@
+###v0.2.10 (a.k.a. v0.3.0 alpha)
+- added **FSnode::list_FSnode_extensions()**, **FSnode::get_FSnode_extension_by_URI()**, **FSnode::get_FSnode_hooks_by_URI()**, which will be used for dynamic mounting each **FSnode** object.
+- each extension will be linked to an URI by scheme **FSnode_%_SCHEME** and by prefix **FSnode_%_URI_PREFIX**
 
 ###v0.2.9
 - **ALLOW_FSbrowser** determines if **FSbrowser** is usable

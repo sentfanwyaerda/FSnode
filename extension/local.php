@@ -25,8 +25,8 @@
 ****************** CHANGES IN THE CODE ARE AT OWN RISK *****************************/
 require_once(dirname(dirname(__FILE__)).DIRECTORY_SEPARATOR.'FSnode.php');
 
-define('FSnode_LOCAL_URI_PREFIX', 'file:/ file:\s:\\ \s:\\ / smb:/ \\\\'); #file:/ and / is for UNIX, all other are for Windows
-define('FSnode_LOCAL_SCHEME', 'file smb');
+define('FSnode_LOCAL_URI_PREFIX', 'file:/ file:\s:\\ \s:\\ /'); #file:/ and / is for UNIX, all other are for Windows
+define('FSnode_LOCAL_SCHEME', 'file');
 
 class FSnode_local extends FSnode {
 	private function _allowed_methods(){
