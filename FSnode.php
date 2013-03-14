@@ -38,7 +38,7 @@ define('FAIL', 'fail');
 if(!defined('FSnode_ALLOW_CODE_EXECUTE')){ define('FSnode_ALLOW_CODE_EXECUTE', FALSE); }
 
 class FSnode extends Xnode {
-	public function Version($f=FALSE){ return '0.2.9'; }
+	public function Version($f=FALSE){ return '0.2.10'; }
 	public function Product_url($u=FALSE){ return ($u === TRUE ? "https://github.com/sentfanwyaerda/FSnode" : "http://sent.wyaerda.org/FSnode/?version=".self::Version(TRUE).'&license='.str_replace(' ', '+', self::License()) );}
 	public function Product($full=FALSE){ return "FSnode".(!($full===FALSE) ? " ".self::version(TRUE).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
 	public function License($with_link=FALSE){ return ($with_link ? '<a href="'.self::License_url().'">' : NULL).'cc-by-nd 3.0'.($with_link ? '</a>' : NULL); }
@@ -49,8 +49,9 @@ class FSnode extends Xnode {
 		if(FSnode_ALLOW_CODE_EXECUTE){
 			$fsnode = FSnode('file:'.FSnode::Product_base());
 			$fsnode->add_hook('git');
+			#backup FSnode.settings.php
 			$fsnode->refresh('origin');
-			#chmod(manual, FSbrowser)
+			#restore FSnode.settings.php
 		}
 		else{
 			return FALSE;
@@ -86,37 +87,45 @@ class FSnode extends Xnode {
 		return $bool;
 	}
 	public function add_hook($hook, $auto_load=FALSE){
-		if(!($auto_load===FALSE) && !class_exists( 'FSnode_'.$hook )){ self::load_extension($hook); }
+		if(!($auto_load===FALSE) && !class_exists( 'FSnode_'.$hook )){ self::load_FSnode_extension($hook); }
 	
 		if(class_exists( 'FSnode_'.$hook) && !in_array($hook, $this->hooks)){ $this->hooks[] = (string) $hook; return TRUE; }
 		else{ return FALSE; }
 	}
-	public function load_extension($ext=FALSE){
-		switch($ext){
-			case TRUE:
-				foreach(scandir(FSnode_EXTENSION_DIRECTORY) as $f){
-					if(!in_array($f, array('.', '..', 'all.php')) && preg_match("#(.*).php$#i", $f, $buffer)){
-						FSnode::load_extension($buffer[1]);
-					}
+	public function load_extension($ext=FALSE){ return self::load_FSnode_extension($ext); }
+	public function load_FSnode_extension($ext=FALSE){
+		if($ext === TRUE){ /*load all extensions*/
+			foreach(scandir(FSnode_EXTENSION_DIRECTORY) as $f){
+				if(!in_array($f, array('.', '..', 'all.php')) && preg_match("#(.*).php$#i", $f, $buffer)){
+					FSnode::load_FSnode_extension($buffer[1]);
 				}
-				break;
-			case FALSE: break;
-			default:
-				if(is_array($ext)){
-					$bool = TRUE;
-					foreach($ext as $buffer){
-						$bool = ($bool && FSnode::load_extension($buffer) );
-					}
-					return $bool;
-				}
-				else{
-					$p = FSnode_EXTENSION_DIRECTORY.preg_replace("#[^a-z0-9_]#i", "", $ext).'.php';
-					if(file_exists($p)){
-						require_once($p);
-					} else{ return FALSE; }
-				}
+			}
+		}
+		elseif($ext === FALSE){ return FALSE; }
+		elseif(is_array($ext)){
+			$bool = TRUE;
+			foreach($ext as $buffer){
+				$bool = ($bool && FSnode::load_FSnode_extension($buffer) );
+			}
+			return $bool;
+		}
+		else{
+			$p = FSnode_EXTENSION_DIRECTORY.preg_replace("#[^a-z0-9_]#i", "", $ext).'.php';
+			if(file_exists($p)){
+				require_once($p);
+			} else{ return FALSE; }
 		}
 		return TRUE;
+	}
+	public /*array*/ function list_FSnode_extensions(){
+		$set = array();
+		$classlist = get_declared_classes();
+		foreach($classlist as $d){
+			if(preg_match("#^FSnode_(.*)$#i", $d, $buffer) && class_exists("FSnode_".strtolower($buffer[1])) && (defined('FSnode_'.strtoupper($buffer[1]).'_URI_PREFIX') || defined('FSnode_'.strtoupper($buffer[1]).'_SCHEME')) ){
+				$set[] = strtolower($buffer[1]);
+			}
+		}
+		return $set;
 	}
 	
 	private $URI = NULL;
@@ -149,6 +158,33 @@ class FSnode extends Xnode {
 			return FALSE;
 		}
 	}
+	public /*string|FALSE*/ function get_FSnode_extension_by_URI($URI){
+		$set = self::parse_url($URI);
+		
+		foreach(self::list_FSnode_extensions() as $extension){
+			if(defined('FSnode_'.strtoupper($extension).'_SCHEME') && isset($set['scheme'])){
+				$schemes = explode(' ', constant('FSnode_'.strtoupper($extension).'_SCHEME'));
+				$s = explode('+', $set['scheme']);
+				if(in_array(end($s), $schemes)){ return $extension; }
+			}
+			if(defined('FSnode_'.strtoupper($extension).'_URI_PREFIX')){
+				$pattern = explode(' ', constant('FSnode_'.strtoupper($extension).'_URI_PREFIX'));
+				foreach($pattern as $prefix){
+					if(preg_match("#^(".str_replace(array('\s', '\\'), array('[a-z]', '\\\\'), $prefix).")#i", $URI)){ return $extension; }
+				}
+			}			
+		}
+		return FALSE;
+	}
+	public /*array*/ function get_FSnode_hooks_by_URI($URI){
+		$hooks = array();
+		$set = self::parse_url($URI);
+		if(isset($set['scheme'])){
+			$hooks = explode('+', $set['scheme']);
+			/*untested*/ array_pop($hooks);
+		}
+		return $hooks;
+	}
 	private /*bool*/ function _validate_URI($URI){
 		if(preg_match("#^(file:)(.*)([/]?)$#i", $URI, $buffer)){
 			#if(isset($buffer[3]) && $buffer[3]==='/')
@@ -179,6 +215,14 @@ class FSnode extends Xnode {
 				$set['pathtype'] = 'archive';
 			}
 			//return $set;
+		}
+		elseif(substr($url, 0, 2) == '\\\\'){
+			$set = parse_url($url);
+			if(preg_match("#^//([^/]+)(.*)$#i", str_replace('\\', '/', $set['path']), $buffer)){
+				$set['scheme'] = 'smb';
+				$set['host'] = $buffer[1];
+				$set['path'] = /*str_replace('/', '\\',*/ $buffer[2] /*)*/;
+			}
 		}
 		elseif($set = parse_url($url, $component)){ #in all regular cases
 			//return $set;
@@ -462,4 +506,6 @@ class FSnode extends Xnode {
 		return NULL;
 	}
 }
+/*To make sure FSnode_local is loaded*/
+if(file_exists(FSnode_EXTENSION_DIRECTORY.'local.php')){ require_once(FSnode_EXTENSION_DIRECTORY.'local.php'); }
 ?>

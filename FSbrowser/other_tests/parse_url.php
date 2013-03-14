@@ -1,7 +1,7 @@
 <?php
 $set = array(
 	'file:/var/www/',
-	'file+git:/var/www/',
+	'git+file:/var/www/',
 	'file:R:\development\FSnode\extension\\',
 	'http://www.google.com/translate/',
 	'git://github.com/sentfanwyaerda/FSnode.git',
@@ -29,12 +29,13 @@ $set = array(
 #for FSnode::parse_url() ( an extended version of parse_url() )
 require_once(dirname(dirname(dirname(__FILE__))).DIRECTORY_SEPARATOR.'FSnode.php');
 
+FSnode::load_extension(TRUE);
 
 print '<table>';
 foreach($set as $URI){
 	#/*fixes*/ $URI = str_replace(array(':///'), array('://localhost/'), $URI);
 	$sub = FSnode::parse_url($URI);
-	print '<tr><td valign="top"><pre><b>'.$URI.'</b><br/><em>'.FSnode::rebuild_url($sub).'</em></pre></td><td valign="top"><pre>';
+	print '<tr><td valign="top"><pre><b>'.$URI.'</b><br/><em>'.FSnode::rebuild_url($sub).'</em><br/><br/>'.(FSnode::get_FSnode_extension_by_URI($URI) ? '&rArr; opens with <u>FSnode_'.FSnode::get_FSnode_extension_by_URI($URI).'</u>' : NULL).(count(FSnode::get_FSnode_hooks_by_URI($URI)) > 0 ? ' +hooks: <i>'.implode('</i> & <i>', FSnode::get_FSnode_hooks_by_URI($URI)).'</i>' : NULL).'</pre></td><td valign="top"><pre>';
 	foreach($sub as $n=>$v){ print '['.$n.str_repeat(' ', 13-strlen($n)).']: '.(is_array($v) ? substr(print_r($v, TRUE), 7, -3) : (string) $v).'<br/>'; }
 	print "</pre></td></tr>\n";
 }

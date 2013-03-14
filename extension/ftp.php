@@ -25,7 +25,8 @@
 ****************** CHANGES IN THE CODE ARE AT OWN RISK *****************************/
 require_once(dirname(dirname(__FILE__)).DIRECTORY_SEPARATOR.'FSnode.php');
 
-define('FSnode_EXTENSION_FTP', 'ftp:// ftps:// sftp://');
+define('FSnode_FTP_URI_PREFIX', 'ftp:// ftps:// sftp://');
+define('FSnode_FTP_SCHEME', 'ftp');
 
 class FSnode_ftp extends FSnode {
 	private /*resource*/ $ftp_stream;

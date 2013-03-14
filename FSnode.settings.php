@@ -5,6 +5,7 @@
 @define('FSnode_TEMP_DIRECTORY', dirname(__FILE__).DIRECTORY_SEPARATOR.'tmp'.DIRECTORY_SEPARATOR);
 @define('FSnode_EXTENSION_DIRECTORY', dirname(__FILE__).DIRECTORY_SEPARATOR.'extension'.DIRECTORY_SEPARATOR);
 @define('ALLOW_FSbrowser', TRUE);
+@define('FSnode_ALLOW_CODE_EXECUTE', FALSE);
 
 /*************
 *   FIXES    *
