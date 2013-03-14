@@ -83,10 +83,10 @@ class FSbrowser{
 					$lines[$f] = parse_template('templates/line.html', array(
 						'file:name.full' => ($f == '..' ? 'Parent Directory' : $f.($this->handler->is_dir($subURI. DIRECTORY_SEPARATOR .$f) ? '/' : NULL)),
 						'file:url' => str_replace(DIRECTORY_SEPARATOR, '/',  './FSbrowser.php?URI='.($f == '..' ? DIRECTORY_SEPARATOR .$this->label.dirname($subURI): DIRECTORY_SEPARATOR .$this->label.$subURI. DIRECTORY_SEPARATOR .$f) ),
-						'file:type.class' => ($f == '..' ? 'parent-directory' : ($this->handler->is_dir($subURI. DIRECTORY_SEPARATOR .$f) ? 'directory' : strtolower(preg_replace("#^(.*)[.]([a-z0-9]+)$#i", "\\2", $f)) )),
+						'file:type.class' => ($f == '..' ? 'parent-directory' : ($this->handler->is_dir($subURI. DIRECTORY_SEPARATOR .$f) ? 'directory' : strtolower(preg_replace("#^(.*)[.]([a-z0-9]+)$#i", "\\2", $f)).' '.preg_replace("#[^a-z0-9-]#i", "-", $this->handler->mime_content_type($subURI. DIRECTORY_SEPARATOR .$f)) )),
 						'file:modified.last' => date('d-M-Y H:i', $this->handler->filemtime($subURI. DIRECTORY_SEPARATOR .$f) ),
-						'file:size' => ($this->handler->file_exists($subURI. DIRECTORY_SEPARATOR .$f) && !$this->handler->is_dir($subURI. DIRECTORY_SEPARATOR .$f) ? $this->handler->filesize($subURI. DIRECTORY_SEPARATOR .$f) : NULL),
-						'file:description' => NULL,
+						'file:size' => ($this->handler->file_exists($subURI. DIRECTORY_SEPARATOR .$f) && !$this->handler->is_dir($subURI. DIRECTORY_SEPARATOR .$f) ? $this->_humanizeFileSize( $this->handler->filesize($subURI. DIRECTORY_SEPARATOR .$f)) : NULL),
+						'file:description' => $this->handler->mime_content_type($subURI. DIRECTORY_SEPARATOR .$f),
 						'actions(file)' => NULL,
 						));
 					}

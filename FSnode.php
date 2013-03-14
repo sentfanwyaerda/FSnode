@@ -38,7 +38,7 @@ define('FAIL', 'fail');
 if(!defined('FSnode_ALLOW_CODE_EXECUTE')){ define('FSnode_ALLOW_CODE_EXECUTE', FALSE); }
 
 class FSnode extends Xnode {
-	public function Version($f=FALSE){ return '0.2.8fix'; }
+	public function Version($f=FALSE){ return '0.2.9'; }
 	public function Product_url($u=FALSE){ return ($u === TRUE ? "https://github.com/sentfanwyaerda/FSnode" : "http://sent.wyaerda.org/FSnode/?version=".self::Version(TRUE).'&license='.str_replace(' ', '+', self::License()) );}
 	public function Product($full=FALSE){ return "FSnode".(!($full===FALSE) ? " ".self::version(TRUE).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
 	public function License($with_link=FALSE){ return ($with_link ? '<a href="'.self::License_url().'">' : NULL).'cc-by-nd 3.0'.($with_link ? '</a>' : NULL); }
@@ -172,9 +172,11 @@ class FSnode extends Xnode {
 		if(preg_match("#[\.](".implode('|', $cfext).")[/]#i", $url)){ #in case you request a file from an compressed archive
 			$set = parse_url($url);
 			if(preg_match("#^((.*)[\.](".implode('|', $cfext)."))([/](.*))$#", $set['path'], $buffer)){
+				$set['fullpath'] = $set['path'];
 				$set['path'] = $buffer[1];
 				$set['path-query'] = $buffer[4];
 				if(!preg_match("#".$buffer[3]."#", $set['scheme'])){ $set['scheme'] = $buffer[3].'+'.$set['scheme']; }
+				$set['pathtype'] = 'archive';
 			}
 			//return $set;
 		}
@@ -218,18 +220,25 @@ class FSnode extends Xnode {
 		}
 		else { return FALSE; }
 		
+		/*debug*/ $set = array_merge(array('original' => $url, 'pathtype' => NULL), $set);
+		
 		#analyses of $set['path']:
-		$set['pathtype'] = 'directory'; #mixed,urn,directory,archive,database,..
+		if(isset($set['scheme']) && in_array($set['scheme'], array('mysql','postgres') )){ $set['pathtype'] = 'database'; }
+		elseif(preg_match("#[/\\\/]#i", $url)){ $set['pathtype'] = 'directory'; }
+		else { $set['pathtype'] = 'urn'; } #mixed,urn,directory,archive,database,email,.. 
+		
+		
 		$set['separator'] = ($set['pathtype'] == 'urn' ? ':' : '/');
 		switch($set['pathtype']){
 			case 'urn':
-				if(preg_match("#^(([^".$set['separator']."]+)[".$set['separator']."])?(.*)$#i", $set['path'], $buffer)){
-					if(isset($buffer[2])){ $set['namespace'] = $buffer[2]; }
+				if(preg_match("#^[".$set['separator']."]?(([^".$set['separator']."]+)[".$set['separator']."])?(.*)$#i", $set['path'], $buffer)){
+					if(isset($buffer[2]) && strlen($buffer[2]) > 0){ $set['namespace'] = $buffer[2]; }
+					/*redundancy*/ elseif($set['scheme'] != 'urn'){ $set['namespace'] = $set['scheme'];}
 					$set['resource'] = $buffer[3];
 				}
 				break;
 			case 'database':
-				if(preg_match("#^([^".$set['separator']."]+)([".$set['separator']."](.*))?$#i", $set['path'], $buffer)){
+				if(preg_match("#^[".$set['separator']."]?([^".$set['separator']."]+)([".$set['separator']."](.*))?$#i", $set['path'], $buffer)){
 					$set['database'] = $buffer[1];
 					if(isset($buffer[3])){ $set['table'] = $buffer[3]; }
 				}
@@ -241,16 +250,21 @@ class FSnode extends Xnode {
 				}
 				if(isset($rawpath) && preg_match("#^([^×]+)[×][".$set['separator']."]?(.*)$#i", $rawpath, $buffer)){
 					$set['archive'] = $buffer[1];
-					$set['archivetype'] = $rawext;
-					$set['fullarchive'] = $set['archive'].$set['archivetype'];
-					/*fix*/ if(substr($set['fullarchive'], 0,1) == $set['separator']){ $set['fullarchive'] = substr($set['fullarchive'],1); }
+					$set['archivetype'] = substr($rawext, 1);
+					$set['fullarchive'] = $set['archive'].$rawext;
+					#/*fix*/ if(substr($set['fullarchive'], 0,1) == $set['separator']){ $set['fullarchive'] = substr($set['fullarchive'],1); }
 					/*fix*/ if(substr($set['fullarchive'], -1) == $set['separator']){ $set['fullarchive'] = substr($set['fullarchive'],0,-1); }
-					$remainingpath = $buffer[2];
+					$remainingpath = (isset($set['path-query']) ? $set['path-query'] : $buffer[2]);
 					$set['pathtype'] = 'archive';
 				}
 				/*fix*/ if(!isset($remainingpath)){ $remainingpath = $set['path']; }
-				$set['directory'] = dirname($remainingpath);
-				$set['filename'] = basename($remainingpath);
+				/*fix*/ $remainingpath = str_replace('\\','/', $remainingpath);
+				if(substr($remainingpath, -1) == '/'){ $set['directory'] = substr($remainingpath, 0, -1); }
+				else{
+					$set['directory'] = dirname($remainingpath);
+					$set['filename'] = basename($remainingpath);
+				}
+				/*fix*/ if(preg_match("#[\\\]#", $set['path'])){ $set['directory'] = str_replace('/', '\\', $set['directory']); $set['separator'] = '\\'; }
 				if(isset($set['filename']) && preg_match("#^(.*)[.]([^.]+)$#i", $set['filename'], $buffer)){
 					$set['filetype'] = $buffer[2]; #extension
 					//$set['filemime'] = #?
@@ -261,8 +275,10 @@ class FSnode extends Xnode {
 		//$set['assigner'] = (=|:);
 		//$set['divider'] = (&|;)
 		//$set['masterdivider'] =  ($set['pathtype'] == 'urn' ? ';' : '?');
-		parse_str($set['query'], $set['queryexpanded']);
-		$set['queryamount'] = count($set['queryexpanded']);
+		if(isset($set['query'])){
+			parse_str($set['query'], $set['queryexpanded']);
+			$set['queryamount'] = count($set['queryexpanded']);
+		}
 		
 		#analyses of $set['user']
 		//$set['anonymous'] = (yes|no);

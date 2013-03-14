@@ -1,6 +1,7 @@
 
 ###v0.2.9
 - **ALLOW_FSbrowser** determines if **FSbrowser** is usable
+- bug-fixes in **FSnode::parse_url()** (only remaining known bug is on 'feed:https://example.com/rss.xml', but 'feed+https://example.com/rss.xml' works!)
 
 ###v0.2.8
 - expanded the analysed elements **FSnode::parse_url()** can give; filename, directory, archive, database, table, namespace, resource, separator, masterdivider, divider, assigner. And allows for returning a selection of those elements.
