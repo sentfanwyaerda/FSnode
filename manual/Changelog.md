@@ -1,3 +1,7 @@
+###v0.2.11 (a.k.a. v0.3.0 beta)
+- added a preleminariy working **FSnode::load_URI()** and **FSnode()** method for loading objects through extension
+	- for correct loading of URI's in its particular extension, the extension has to be loaded. For example run first: **FSnode::load_extension(TRUE);** (I ran into some 'bugs' when I tried *ftp://..* for testing -- I expected FSnode_ftp to be available)
+
 ###v0.2.10 (a.k.a. v0.3.0 alpha)
 - added **FSnode::list_FSnode_extensions()**, **FSnode::get_FSnode_extension_by_URI()**, **FSnode::get_FSnode_hooks_by_URI()**, which will be used for dynamic mounting each **FSnode** object.
 - each extension will be linked to an URI by scheme **FSnode_%_SCHEME** and by prefix **FSnode_%_URI_PREFIX**

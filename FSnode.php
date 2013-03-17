@@ -37,10 +37,17 @@ define('ITTERATION', 'itteration');
 define('FAIL', 'fail');
 if(!defined('FSnode_ALLOW_CODE_EXECUTE')){ define('FSnode_ALLOW_CODE_EXECUTE', FALSE); }
 
+function FSnode($a=NULL, $b=FALSE, $c=FALSE, $d=FALSE){
+	#assume $a is an URI, then $b is (bool ? get result/document : connected $FSnode object). Ignore $c and $d.
+	$fs = FSnode::URI_load($a);
+	if(is_bool($b)){ return ($b ? $fs->read() : $fs); }
+	else{ return /*error*/ FALSE; }
+}
+
 class FSnode extends Xnode {
-	public function Version($f=FALSE){ return '0.2.10'; }
+	public function Version($f=FALSE){ return '0.2.11'; }
 	public function Product_url($u=FALSE){ return ($u === TRUE ? "https://github.com/sentfanwyaerda/FSnode" : "http://sent.wyaerda.org/FSnode/?version=".self::Version(TRUE).'&license='.str_replace(' ', '+', self::License()) );}
-	public function Product($full=FALSE){ return "FSnode".(!($full===FALSE) ? " ".self::version(TRUE).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
+	public function Product($full=FALSE){ return "FSnode".(!($full===FALSE) ? (is_array($full) ? '(extended with '.preg_replace('#(, )([A-Z]+)$#i', ' and \\2', strtoupper(implode(', ', self::list_FSnode_extensions()))).') ' : NULL)." ".self::version(TRUE).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
 	public function License($with_link=FALSE){ return ($with_link ? '<a href="'.self::License_url().'">' : NULL).'cc-by-nd 3.0'.($with_link ? '</a>' : NULL); }
 	public function License_url(){ return 'http://creativecommons.org/licenses/by-nd/3.0/'; }
 	public function Product_base(){ return dirname(__FILE__).DIRECTORY_SEPARATOR; }
@@ -129,34 +136,24 @@ class FSnode extends Xnode {
 	}
 	
 	private $URI = NULL;
-	public /*FSnode*/ function URI_load($URI){
+	public /*FSnode*/ function URI_load($URI, $auto_connect=TRUE){
+		$extension = FSnode::get_FSnode_extension_by_URI($URI);
+		//*debug*/ print '<!-- FSnode extension of "'.$URI.'" is '.print_r($extension, TRUE).' -->'."\n";
+		if($extension === FALSE){ return FALSE; }
+				
 		#if(isset($this)){ $o =& $this; } else {
-			$o = new FSnode();
+			$ext = "FSnode_".strtolower($extension);
+			$FSnode = new $ext();
 		#}
-		$o->URI = $URI;
+		$FSnode->URI = $URI;
 		
-		#detect FSnode_?? by namespace
-		$ns = strtolower(preg_replace("#^([a-z]+)[:](.*)$#i", "\\1", $URI));
-		switch($ns){
-			case 'ftp':
-				$o->_rewrite_class = 'FSnode_ftp';
-				break;
-			default:
-				#if(isset($[$ns])){} #loads manual affix of custom FSnode_??
-				#do nothing: keep FSnode on LOCAL
-				#$o->_rewrite_class = 'FSnode_local';
+		$hooks = FSnode::get_FSnode_hooks_by_URI($URI);
+		if(is_array($hooks)){
+			foreach($hooks as $hook){ $FSnode->add_hook($hook); }
 		}
 		
-		#FSnode REWRITE		
-		if(method_exists('Xnode', 'XnodeClassRewrite')){ Xnode::XnodeClassRewrite($o); }
-		
-		if($o->_validate_URI($o->URI)){
-			$o->connect();
-			return $o;
-		}
-		else{
-			return FALSE;
-		}
+		if($auto_connect === TRUE){ $FSnode->connect($auto_connect); }
+		return $FSnode;
 	}
 	public /*string|FALSE*/ function get_FSnode_extension_by_URI($URI){
 		$set = self::parse_url($URI);
@@ -484,7 +481,7 @@ class FSnode extends Xnode {
 		$this->_hook(__METHOD__, array('directory'=>$directory, 'sorting_order'=>$sorting_order), PREFIX, TRUE);
 		$result = self::scandir($directory, $sorting_order);
 		$this->_hook(__METHOD__, array('directory'=>$directory, 'sorting_order'=>$sorting_order, 'result'=>$result), POSTFIX);
-		return $reslut;
+		return $result;
 	}
 	
 	#Basic extended

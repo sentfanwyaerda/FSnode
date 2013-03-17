@@ -4,7 +4,7 @@ A good example is when you want to automatically commit the change to Git reposi
 
 You will need to initialize your **FSnode** like:
 ```php
-$fs = FSnode('file+git:/path/to/mount/');
+$fs = FSnode('git+file:/path/to/mount/');
 ```
 or more explicite by:
 ```php

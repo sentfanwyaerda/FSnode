@@ -9,7 +9,7 @@ function XLtrace_about_class($c){
 	$licenses[$class::License()] = $class::License(TRUE);
 	foreach(get_declared_classes() as $gdc){
 		if(method_exists((string) $gdc, 'Product') && method_exists((string) $gdc, 'Version') && $gdc !== $class){
-			$str .= ' + with: '.(method_exists((string) $gdc, 'Product_url') ? '<a href="'.$gdc::Product_url().'">' : NULL).$gdc::Product().(method_exists((string) $gdc, 'Product_url') ? '</a>' : NULL).' '.$gdc::Version().(!isset($licenses[$gdc::License()]) ? '<sup>('.(count($licenses)+1).')</sup>' : NULL)."\n";
+			$str .= ' + with: '.'<!-- '.$gdc.' -->'.(method_exists((string) $gdc, 'Product_url') ? '<a href="'.$gdc::Product_url().'">' : NULL).$gdc::Product().(method_exists((string) $gdc, 'Product_url') ? '</a>' : NULL).' '.$gdc::Version(TRUE).(!isset($licenses[$gdc::License()]) ? '<sup>('.(count($licenses)+1).')</sup>' : NULL)."\n";
 			if(!isset($licenses[$gdc::License()])){ $licenses[$gdc::License()] = '<sup>'.(count($licenses)+1).':</sup>'.$gdc::License(TRUE); }
 		}
 	}

@@ -29,6 +29,8 @@ define('FSnode_LOCAL_URI_PREFIX', 'file:/ file:\s:\\ \s:\\ /'); #file:/ and / is
 define('FSnode_LOCAL_SCHEME', 'file');
 
 class FSnode_local extends FSnode {
+	public function Version($a=FALSE){ return (/*!(parent::version(TRUE) == self::version(FALSE)) && */ !($a==FALSE) ? parent::version(TRUE).'-' : NULL).'native'; }
+	public function Product($full=FALSE){ return "FSnode:local".(!($full===FALSE) ? " ".self::version(TRUE).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
 	private function _allowed_methods(){
 		return array('chmod','chgrp','chown','copy','delete','disk_free_space','disk_total_space','file_exists','file_get_contents','file_put_contents','file','fileatime','filectime','filegroup','fileinode','filemtime','fileowner','fileperms','filesize','filetype','is_dir','is_executable','is_file','is_readable','is_writable','is_writeable','mkdir','rename','rndir','stat','touch','unlink','read','write');
 	}
