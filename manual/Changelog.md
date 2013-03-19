@@ -1,3 +1,8 @@
+
+###v0.3.0
+- extended **FSnode::parse_url()** with detection for *feed:https://example.com/rss.xml* and IP-addresses
+- bugfixes and some work on **FSnode_ftp** and **FSbrowser*
+
 ###v0.2.11 (a.k.a. v0.3.0 beta)
 - added a preleminariy working **FSnode::load_URI()** and **FSnode()** method for loading objects through extension
 	- for correct loading of URI's in its particular extension, the extension has to be loaded. For example run first: **FSnode::load_extension(TRUE);** (I ran into some 'bugs' when I tried *ftp://..* for testing -- I expected FSnode_ftp to be available)

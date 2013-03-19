@@ -4,7 +4,8 @@ While FSnode is still in its infant stage, you will encounter bugs. You can repo
 
 ##Open
 - **[FSbrowser](https://github.com/sentfanwyaerda/FSnode/blob/master/manual/FSbrowser.md)** can't open/preview/ ~~status~~ files. It treats every URL as a directory. *Will be resolved in v0.3!*
-- **$fs->scan('./')** does not always mount to the correct corresponding directory. The URI *file:/some/where/* works, but */some/where/* not. Even more problems survicing in **FSnode_ftp** with *ftp://localhost/*.
+- **$fs->scan('./')** does not always mount to the correct corresponding directory. ~~The URI *file:/some/where/* works, but */some/where/* not.~~ It appears to be resulting from the need to work with an absolute path / realpath; **FSnode::_filename_attach_prefix** might be instable.
+- **FSnode_ftp** has connection and listing issues on the testing ftp-server. e.g. **FSnode_ftp::connect()** and **FSnode_ftp::scan()**
 
 ##Untested
 - **class [FSnode_ftp](https://github.com/sentfanwyaerda/FSnode/blob/master/manual/FSnode_ftp.md)**

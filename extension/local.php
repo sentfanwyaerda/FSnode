@@ -36,5 +36,9 @@ class FSnode_local extends FSnode {
 	}
 	public /*string*/ function __toString(){ return (string) $this->URI; }
 	
+	public /*bool*/ function is_connected(){
+		$directory = $this->_filename_attach_prefix(NULL);
+		return (file_exists($directory) && is_dir($directory) ? TRUE : FALSE);
+	}
 }
 ?>

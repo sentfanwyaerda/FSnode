@@ -26,7 +26,7 @@ require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'extra-library.php');
 session_start();
 
 class FSbrowser{
-	public function Version($f=FALSE){ return '0.2.2'; }
+	public function Version($f=FALSE){ return '0.3.0'; }
 	public function Product_url($u=FALSE){ return ($u === TRUE ? "https://github.com/sentfanwyaerda/FSnode" : "http://sent.wyaerda.org/FSbrowser/".'?version='.self::Version(TRUE).'&license='.str_replace(' ', '+', self::License()) );}
 	public function Product($full=FALSE){ return "FSnode Browser".($full ? " ".self::version(TRUE).(class_exists('FSnode') && method_exists('FSnode', 'Product') ? '/'.FSnode::Product(TRUE) : NULL).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
 	public function License($with_link=FALSE){ return ($with_link ? '<a href="'.self::License_url().'">' : NULL).'cc-by-nd 3.0'.($with_link ? '</a>' : NULL); }
@@ -77,8 +77,11 @@ class FSbrowser{
 		if(is_object($this->handler)){
 			$lines = array();
 			$subURI = str_replace(DIRECTORY_SEPARATOR, '/',  str_replace($this->handler->realpath('/'), '', $this->handler->realpath($subURI)) );
+			/*debug*/ print '<!-- FSbrowser::build.$subURI: '.$subURI.' ['.$this->handler->is_dir($subURI).'] -->'."\n";
 			if($this->handler->is_dir($subURI)){
-				foreach($this->handler->scandir($subURI) as $f){
+				$list = $this->handler->scandir($subURI);
+				/*fix: on scandir error */ if(!is_array($list)){ $list = array(); }
+				foreach($list as $f){
 					if($this->handler->realpath($subURI. DIRECTORY_SEPARATOR .$f) && !($f == '.')){
 					$lines[$f] = parse_template('templates/line.html', array(
 						'file:name.full' => ($f == '..' ? 'Parent Directory' : $f.($this->handler->is_dir($subURI. DIRECTORY_SEPARATOR .$f) ? '/' : NULL)),
@@ -94,7 +97,7 @@ class FSbrowser{
 				ksort($lines);
 			}
 			
-			$set = array('title'=>'Index of '.$subURI.'/','include:lines()'=>implode($lines),'footer'=>NULL,'URI'=>$this->URI,'label'=>$this->label,'meta-information'=>$this->build_URI_info($subURI));
+			$set = array('title'=>'Index of '.$subURI.'/','connection:status'=>($this->handler->is_connected() ? 'connected' : 'unconnected'),'include:lines()'=>implode($lines),'footer'=>NULL,'URI'=>$this->URI,'label'=>$this->label,'meta-information'=>$this->build_URI_info($subURI));
 			return parse_template('templates/overview.html', $set);
 		}
 		else{
@@ -155,10 +158,13 @@ class FSbrowser{
 }
 
 if(defined('ALLOW_FSbrowser') && ALLOW_FSbrowser === TRUE ){
+	/*fix*/ FSnode::load_extension(TRUE);
+	
 	if(function_exists('XLtrace_about_class')){ print '<pre>'; print XLtrace_about_class('FSbrowser'); print '</pre><hr/>'; }
 	#/*debug*/ if(isset($_GET)){ print '<pre>$_GET = '; print_r($_GET); print '</pre>'; }
 	#/*debug*/ if(isset($_POST)){ print '<pre>$_POST = '; print_r($_POST); print '</pre>'; }
-	#/*debug*/ if(isset($_SESSION)){ print '<pre>$_SESSION ='; print_r($_SESSION); print '</pre>'; }
+	#/*debug*/ if(isset($_SESSION)){ print '<pre>$_SESSION ='; print_r($_SESSION); print '</pre>'; }	
+	
 	$subURI = (isset($_GET['URI']) ? $_GET['URI'] : NULL);
 	$label = preg_replace("#^[/]?([^/]+)[/](.*)$#", "\\1", $subURI);
 	$baseURI = FSbrowser::getURI_by_SESSION_and_PREFIX($subURI);
@@ -166,9 +172,11 @@ if(defined('ALLOW_FSbrowser') && ALLOW_FSbrowser === TRUE ){
 
 	$FSbrowser = new FSbrowser($baseURI, $label);
 	#/*debug*/ print '<pre>'; print_r($FSbrowser); print '</pre>';
-	if(isset($_POST['action']) && $_POST['action'] == 'FSbrowser.connect'){ FSbrowser::connect($_POST['URI'], $_POST['label'], TRUE); }
+	if(isset($_POST['action']) && $_POST['action'] == 'FSbrowser.connect'){ FSbrowser::connect($_POST['URI'], $_POST['label'], TRUE); if(isset($_POST['debug'])){ $_SESSION['debug'] = 'true'; } else { unset($_SESSION['debug']); } }
 	#if(!isset($_GET['URI'])){ print $FSbrowser->build_connect(); }
 	print $FSbrowser->build($subURI);
 	#/*debug*/ print '<pre>$->scandir('.$subURI.') ='; print_r( $FSbrowser->handler->scandir($subURI) ); print '</pre>';
+	
+	/*debug*/ if(isset($_GET['debug']) || isset($_SESSION['debug'])){ print '<pre>$FSbrowser = '; print_r($FSbrowser); print '</pre>';}
 }
 ?>

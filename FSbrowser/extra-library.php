@@ -12,6 +12,7 @@ function XLtrace_about_class($c){
 			$str .= ' + with: '.'<!-- '.$gdc.' -->'.(method_exists((string) $gdc, 'Product_url') ? '<a href="'.$gdc::Product_url().'">' : NULL).$gdc::Product().(method_exists((string) $gdc, 'Product_url') ? '</a>' : NULL).' '.$gdc::Version(TRUE).(!isset($licenses[$gdc::License()]) ? '<sup>('.(count($licenses)+1).')</sup>' : NULL)."\n";
 			if(!isset($licenses[$gdc::License()])){ $licenses[$gdc::License()] = '<sup>'.(count($licenses)+1).':</sup>'.$gdc::License(TRUE); }
 		}
+		#/*debug*/ else { $str .= '<!-- ignore: '.$gdc.' -->'."\n"; }
 	}
 	$str .= 'License: '.implode(', ', $licenses)."\n";
 	return $str;

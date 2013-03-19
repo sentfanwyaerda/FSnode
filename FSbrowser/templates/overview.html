@@ -1,5 +1,7 @@
 <style>
-.fileicon { display: inline-block; background-color: #C9C9C9; width: 16px; height: 16px; margin-right: 8px;  }
+.fileicon, #connection { display: inline-block; background-color: #C9C9C9; width: 16px; height: 16px; margin-right: 8px; text-indent: -9999px; }
+#connection.connected, .connected { color: white; background-color: #99F999; }
+#connection.unconnected, .unconnected { color: white; background-color: #F99999; }
 </style>
 
 <table class="fsbrowser overview">
@@ -7,7 +9,7 @@
 		<th class="title" colspan="5"><h2 style="text-align:left; padding: 0; margin: 0;">{title}</h2></th>
 	</tr>
 	<tr>
-		<td style="text-align:left;" colspan="5"><small style="color: #BBBBBB;"><strong>{label}</strong>: <em>{URI}</em></small></td>
+		<td style="text-align:left;" colspan="5"><small style="color: #BBBBBB;"><strong>{label}</strong>: <em class="{connection:status}">{URI}</em> <span id="connection" class="{connection:status}" style="visibility: hidden;">[{connection:status}]</span></small></td>
 	</tr>
 	<tr class="header">
 		<th>Name</th>

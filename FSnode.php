@@ -45,7 +45,7 @@ function FSnode($a=NULL, $b=FALSE, $c=FALSE, $d=FALSE){
 }
 
 class FSnode extends Xnode {
-	public function Version($f=FALSE){ return '0.2.11'; }
+	public function Version($f=FALSE){ return '0.3.0'; }
 	public function Product_url($u=FALSE){ return ($u === TRUE ? "https://github.com/sentfanwyaerda/FSnode" : "http://sent.wyaerda.org/FSnode/?version=".self::Version(TRUE).'&license='.str_replace(' ', '+', self::License()) );}
 	public function Product($full=FALSE){ return "FSnode".(!($full===FALSE) ? (is_array($full) ? '(extended with '.preg_replace('#(, )([A-Z]+)$#i', ' and \\2', strtoupper(implode(', ', self::list_FSnode_extensions()))).') ' : NULL)." ".self::version(TRUE).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
 	public function License($with_link=FALSE){ return ($with_link ? '<a href="'.self::License_url().'">' : NULL).'cc-by-nd 3.0'.($with_link ? '</a>' : NULL); }
@@ -152,7 +152,7 @@ class FSnode extends Xnode {
 			foreach($hooks as $hook){ $FSnode->add_hook($hook); }
 		}
 		
-		if($auto_connect === TRUE){ $FSnode->connect($auto_connect); }
+		if($auto_connect === TRUE){ $FSnode->connect($URI); }
 		return $FSnode;
 	}
 	public /*string|FALSE*/ function get_FSnode_extension_by_URI($URI){
@@ -182,26 +182,29 @@ class FSnode extends Xnode {
 		}
 		return $hooks;
 	}
-	private /*bool*/ function _validate_URI($URI){
-		if(preg_match("#^(file:)(.*)([/]?)$#i", $URI, $buffer)){
-			#if(isset($buffer[3]) && $buffer[3]==='/')
-			return (file_exists($buffer[2]) && is_dir($buffer[2]));
-		} else { return FALSE; }
-	}
-	private /*string*/ function _filename_attach_prefix($filename){
-		if(isset($this->URI) && $this->_validate_URI($this->URI)){
-			preg_match("#^file:(.*)([/]?)$#i", $this->URI, $buffer); list($trash, $chroot, $trash) = $buffer;
-			#if(!preg_match("#^(".$chroot.")#i", $filename)){ #check for prefix: do not double prefix
-				$filename = $chroot.(!preg_match("#^[/\\/]#i", $filename) ? DIRECTORY_SEPARATOR : NULL).$filename;
-			#}
-			#/*debug*/ print "<!-- \n\t".$filename."\n=\t".realpath($chroot)."\n=\t".realpath($filename)."\n -->\n";
-			if(!(substr(realpath($filename), 0, strlen(realpath($chroot))) == realpath($chroot))){ return FALSE; /*out of chroot*/ }
+	/*public|private*/ /*string*/ function _filename_attach_prefix($filename=NULL){
+		if(isset($this->URI)){
+			$chroot = self::parse_url($this->URI, 'path');
+		 	if(file_exists($chroot) /*&& is_dir($chroot)*/){
+				/*fix*/ if(substr($chroot, -1) == '/'){ $chroot = substr($chroot, 0, -1); }
+				if(!is_dir($chroot)){ $chroot = dirname($chroot); }
+			
+			
+				if(!preg_match("#^(".$chroot.")#i", $filename)){ #check for prefix: do not double prefix
+					$filename = $chroot.(!preg_match("#^[/\\/]#i", $filename) ? DIRECTORY_SEPARATOR : NULL).$filename;
+				}
+				#/*debug*/ print "<!-- \n\t".$filename."\n=\t".realpath($chroot)."\n=\t".realpath($filename)."\n -->\n";
+				if(!(substr(realpath($filename), 0, strlen(realpath($chroot))) == realpath($chroot))){ return FALSE; /*out of chroot*/ }
+			}
 		}	
 		return (string) $filename;
 	}
 	
 	public function parse_url($url, $component=-1){
+		if(!($component === -1) && is_string($component) && defined('PHP_URL_'.strtoupper($component))){ $component = constant('PHP_URL_'.strtoupper($component));}
+	
 		$cfext = array('zip',/*tar.*/'gz','tar','bz','rar','iso','gzip','7z'); #compressed file extensions
+		$buffer = explode('://', $url); $scheme = (isset($buffer[0]) && isset($buffer[1]) ? $buffer[0] : NULL);
 		if(preg_match("#[\.](".implode('|', $cfext).")[/]#i", $url)){ #in case you request a file from an compressed archive
 			$set = parse_url($url);
 			if(preg_match("#^((.*)[\.](".implode('|', $cfext)."))([/](.*))$#", $set['path'], $buffer)){
@@ -221,7 +224,11 @@ class FSnode extends Xnode {
 				$set['path'] = /*str_replace('/', '\\',*/ $buffer[2] /*)*/;
 			}
 		}
-		elseif($set = parse_url($url, $component)){ #in all regular cases
+		elseif(preg_match("#^([0-9]{1,3}[.][0-9]{1,3}[.][0-9]{1,3}[.][0-9]{1,3}|localhost)$#i", $url)){ $set = array('host'=>$url); }
+		elseif(preg_match("#[:]#", $scheme)){
+			$set = parse_url(str_replace($scheme, str_replace(':', '+', $scheme), $url));
+		}
+		elseif($set = parse_url($url /*, $component*/)){ #in all regular cases #component will be selected by FSnode::parse_url not its PHP-counterpart
 			//return $set;
 		} 
 		elseif(preg_match("#^([a-z0-9+.-]+)[\:]([/]+)([^\?\#]+)([\?]([^\#]+))?([\#](.*))?$#i", $url, $buffer_one)){ #in failures of php::parse_url(), like email-address-usernames, or 'postgres:///'
@@ -261,6 +268,8 @@ class FSnode extends Xnode {
 		}
 		else { return FALSE; }
 		
+		/*fix*/ if(!isset($set) || !is_array($set)){ $set = array(); }
+		
 		/*debug*/ $set = array_merge(array('original' => $url, 'pathtype' => NULL), $set);
 		
 		#analyses of $set['path']:
@@ -272,9 +281,9 @@ class FSnode extends Xnode {
 		$set['separator'] = ($set['pathtype'] == 'urn' ? ':' : '/');
 		switch($set['pathtype']){
 			case 'urn':
-				if(preg_match("#^[".$set['separator']."]?(([^".$set['separator']."]+)[".$set['separator']."])?(.*)$#i", $set['path'], $buffer)){
+				if(isset($set['path']) && preg_match("#^[".$set['separator']."]?(([^".$set['separator']."]+)[".$set['separator']."])?(.*)$#i", $set['path'], $buffer)){
 					if(isset($buffer[2]) && strlen($buffer[2]) > 0){ $set['namespace'] = $buffer[2]; }
-					/*redundancy*/ elseif($set['scheme'] != 'urn'){ $set['namespace'] = $set['scheme'];}
+					/*redundancy*/ elseif(isset($set['scheme']) && $set['scheme'] != 'urn'){ $set['namespace'] = $set['scheme'];}
 					$set['resource'] = $buffer[3];
 				}
 				break;
@@ -287,7 +296,7 @@ class FSnode extends Xnode {
 			default:
 				$set['pathtype'] = 'directory';
 				foreach(array('.zip','.tgz','.tar.gz','.bz','.7z') as $ext){
-					if(preg_match("#".$ext."#i", $set['path'])){ $rawpath = preg_replace("#".$ext."#i", "×", $set['path']); $rawext = $ext; }
+					if(isset($set['path']) && preg_match("#".$ext."#i", $set['path'])){ $rawpath = preg_replace("#".$ext."#i", "×", $set['path']); $rawext = $ext; }
 				}
 				if(isset($rawpath) && preg_match("#^([^×]+)[×][".$set['separator']."]?(.*)$#i", $rawpath, $buffer)){
 					$set['archive'] = $buffer[1];
@@ -298,14 +307,14 @@ class FSnode extends Xnode {
 					$remainingpath = (isset($set['path-query']) ? $set['path-query'] : $buffer[2]);
 					$set['pathtype'] = 'archive';
 				}
-				/*fix*/ if(!isset($remainingpath)){ $remainingpath = $set['path']; }
+				/*fix*/ if(!isset($remainingpath)){ $remainingpath = (isset($set['path']) ? $set['path'] : NULL); }
 				/*fix*/ $remainingpath = str_replace('\\','/', $remainingpath);
 				if(substr($remainingpath, -1) == '/'){ $set['directory'] = substr($remainingpath, 0, -1); }
 				else{
 					$set['directory'] = dirname($remainingpath);
 					$set['filename'] = basename($remainingpath);
 				}
-				/*fix*/ if(preg_match("#[\\\]#", $set['path'])){ $set['directory'] = str_replace('/', '\\', $set['directory']); $set['separator'] = '\\'; }
+				/*fix*/ if(isset($set['path']) && preg_match("#[\\\]#", $set['path'])){ $set['directory'] = str_replace('/', '\\', $set['directory']); $set['separator'] = '\\'; }
 				if(isset($set['filename']) && preg_match("#^(.*)[.]([^.]+)$#i", $set['filename'], $buffer)){
 					$set['filetype'] = $buffer[2]; #extension
 					//$set['filemime'] = #?
@@ -369,7 +378,7 @@ class FSnode extends Xnode {
 			$hierarchal = $arg['scheme'].'://'.$arg['user'].(isset($arg['pass']) ? ':'.$arg['pass'] : NULL).(substr($arg['path'], 0, 1) != '/' ? '/' : NULL).$arg['path'];
 		}
 		elseif(isset($arg['host'])){
-			$hierarchal = $arg['scheme'].'://'.(isset($arg['user']) ? $arg['user'].(isset($arg['pass']) ? ':'.$arg['pass'] : NULL).'@' : NULL).$arg['host'].(isset($arg['port']) ? ':'.$arg['port'] : NULL).(substr($arg['path'], 0, 1) != '/' ? '/' : NULL).$arg['path'].(isset($arg['path-query']) ? $arg['path-query'] : NULL);
+			$hierarchal = (isset($arg['scheme']) ? $arg['scheme'] : 'unknown').'://'.(isset($arg['user']) ? $arg['user'].(isset($arg['pass']) ? ':'.$arg['pass'] : NULL).'@' : NULL).$arg['host'].(isset($arg['port']) ? ':'.$arg['port'] : NULL).(isset($arg['path']) ? (substr($arg['path'], 0, 1) != '/' ? '/' : NULL).$arg['path'] : NULL).(isset($arg['path-query']) ? $arg['path-query'] : NULL);
 		}
 		else{ $hierarchal = (isset($arg['scheme']) ? $arg['scheme'].':' : NULL).$arg['path']; }
 		$str = $hierarchal.(isset($arg['query']) ? '?'.(is_array($arg['query']) ? http_build_query($arg['query']) : $arg['query']) : NULL).(isset($arg['fragment']) ? '#'.$arg['fragment'] : NULL);
@@ -411,6 +420,8 @@ class FSnode extends Xnode {
 	#public /*bool*/ function is_uploaded_file($filename){ return is_uploaded_file( $this->_filename_attach_prefix( (string) $filename ) ); }
 	public /*bool*/ function is_writable($filename){ return is_writable( $this->_filename_attach_prefix( (string) $filename ) ); }
 	public /*bool*/ function is_writeable($filename){ return self::is_writable( $this->_filename_attach_prefix( (string) $filename ) ); } #alias
+	
+	public /*bool*/ function is_connected(){ return FALSE; }
 	
 	public /*bool*/ function mkdir($pathname, $mode=0777, $recursive=FALSE /*, (resource) $context */ ){ return mkdir( $this->_filename_attach_prefix( (string) $pathname ), (int) $mode, (bool) $recursive /*, (resource) $context */ ); }
 	public /*bool*/ function rename($oldname, $newname /*, (resource) $context */ ){ return rename( $this->_filename_attach_prefix( (string) $oldname ), $this->_filename_attach_prefix( (string) $newname ) /*, (resource) $context */  ); }
@@ -494,7 +505,7 @@ class FSnode extends Xnode {
 		return TRUE;
 	}
 	public /*string*/ function mime_content_type($filename){
-		if( function_exists('finfo_open') && function_exists('finfo_file') && function_exists('finfo_close') ){
+		if(self::is_connected() && function_exists('finfo_open') && function_exists('finfo_file') && function_exists('finfo_close') ){
 			$finfo = finfo_open(FILEINFO_MIME_TYPE);
 			$mime = finfo_file($finfo, $this->_filename_attach_prefix( (string) $filename ) );
 			finfo_close($finfo);
