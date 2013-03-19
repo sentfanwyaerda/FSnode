@@ -3,7 +3,7 @@ The local implementation **FSnode** is modelled after [PHP](http://php.net/) the
 ```php
 $data = file_get_contents('index.html');
 # equals:
-$fsnode = FSnode_local();
+$fsnode = new FSnode_local(); /*or*/ $fsnode = FSnode::load_URI('./');
 $data = $fsnode->file_get_contents('index.html');
 # and more generic:
 $data = $fsnode->read('index.html');

@@ -1,6 +1,7 @@
 
 ###v0.3.0
 - extended **FSnode::parse_url()** with detection for *feed:https://example.com/rss.xml* and IP-addresses
+- added support for relative paths (e.g. *./*) into **FSnode_local**. Note: *../* is not allowed due to possible security issues.
 - bugfixes and some work on **FSnode_ftp** and **FSbrowser*
 
 ###v0.2.11 (a.k.a. v0.3.0 beta)

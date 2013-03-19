@@ -3,6 +3,7 @@ $set = array(
 	'file:/var/www/',
 	'git+file:/var/www/',
 	'/var/www/',
+	'./',
 	'file:R:\development\FSnode\extension\\',
 	'http://www.google.com/translate/',
 	'git://github.com/sentfanwyaerda/FSnode.git',

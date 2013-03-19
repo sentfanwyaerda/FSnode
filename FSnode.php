@@ -185,6 +185,7 @@ class FSnode extends Xnode {
 	/*public|private*/ /*string*/ function _filename_attach_prefix($filename=NULL){
 		if(isset($this->URI)){
 			$chroot = self::parse_url($this->URI, 'path');
+			/*fix*/ if(substr($chroot, 0, 2) == './'){ $chroot = self::Product_base().substr($chroot, 2);}
 		 	if(file_exists($chroot) /*&& is_dir($chroot)*/){
 				/*fix*/ if(substr($chroot, -1) == '/'){ $chroot = substr($chroot, 0, -1); }
 				if(!is_dir($chroot)){ $chroot = dirname($chroot); }
