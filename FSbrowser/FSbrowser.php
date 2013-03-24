@@ -76,10 +76,11 @@ class FSbrowser{
 		
 		if(is_object($this->handler)){
 			$lines = array();
-			$subURI = str_replace(DIRECTORY_SEPARATOR, '/',  str_replace($this->handler->realpath('/'), '', $this->handler->realpath($subURI)) );
+			/*fix*/ $subURI = str_replace(DIRECTORY_SEPARATOR, '/',  preg_replace("#^".$this->handler->realpath('/')."#", '', $this->handler->realpath($subURI)) );
+			/*fix*/ if(substr($subURI, 0, 1) != '/'){ $subURI = '/'.$subURI; }
 			/*debug*/ print '<!-- FSbrowser::build.$subURI: '.$subURI.' ['.$this->handler->is_dir($subURI).'] -->'."\n";
 			if($this->handler->is_dir($subURI)){
-				$list = $this->handler->scandir($subURI);
+				$list = $this->handler->scandir(str_replace(array('[',']','{','}'), array('\[','\]','\{','\}'), $subURI));
 				/*fix: on scandir error */ if(!is_array($list)){ $list = array(); }
 				foreach($list as $f){
 					if($this->handler->realpath($subURI. DIRECTORY_SEPARATOR .$f) && !($f == '.')){

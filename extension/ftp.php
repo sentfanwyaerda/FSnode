@@ -102,7 +102,8 @@ class FSnode_ftp extends FSnode {
 		else { 
 			if($directory === NULL){ $directory = '.'; }
 			$list = ftp_nlist($this->ftp_stream, (string) $directory);
-			/*debug*/ print '<!-- directory: '.$directory.' = '; var_dump($list); print ' x '; var_dump(ftp_rawlist($this->ftp_stream, (string) $directory)); print ' -->'."\n";
+			#/*debug*/ print '<!-- directory: '.$directory.' = '; var_dump($list); print ' x '; var_dump(ftp_rawlist($this->ftp_stream, (string) $directory)); print ' -->'."\n";
+			/*fix*/ if(strlen($directory) > 2){ $list = array_merge(array('..'), $list);}
 			if(!( $sorting_order === SCANDIR_SORT_ASCENDING )){ $list = array_reverse($list); }
 			return $list;
 		}
