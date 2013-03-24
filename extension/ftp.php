@@ -33,6 +33,7 @@ class FSnode_ftp extends FSnode {
 	public function Product($full=FALSE){ return "FSnode:ftp".(!($full===FALSE) ? " ".self::version(TRUE).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
 	
 	private /*resource*/ $ftp_stream;
+	private /*bool*/ $authenticated = FALSE;
 	#private $host, $user, $port;
 	
 	private function _initialize($a=NULL, $b=NULL, $c=NULL, $d=NULL){}
@@ -84,7 +85,7 @@ class FSnode_ftp extends FSnode {
 	public /*dummy*/ function is_writable($filename){ }
 	public /*dummy*/ function is_writeable($filename){ return self::is_writable( (string) $filename ); } #alias
 	
-	public /*bool*/ function is_connected(){ return (is_resource($this->ftp_stream) ? TRUE : FALSE); }
+	public /*bool*/ function is_connected($and_authenticated=TRUE){ return ($and_authenticated===TRUE ? (is_resource($this->ftp_stream) && $this->authenticated === TRUE ? TRUE : FALSE) : (is_resource($this->ftp_stream) ? TRUE : FALSE)); }
 	public /*string*/ function realpath($filename=NULL){ return ($filename===NULL ? '/' : (substr($filename, 0, 1) == '/' ? $filename : '/'.$filename)); }
 	
 	public /*string*/ function mkdir($directory){ if(!self::is_connected()){ return /*error: not connected*/ FALSE; } else { return ftp_mkdir($this->ftp_stream, (string) $directory ); } }
@@ -112,19 +113,23 @@ class FSnode_ftp extends FSnode {
 	
 	#Server Handlers
 	public /*bool*/ function close(){ if(!self::is_connected()){ return /*error: not connected*/ FALSE; } else { return ftp_close($this->ftp_stream); } }
-	public /*resource*/ function connect($host=TRUE, $user=NULL, $pass=NULL, $port=21, $timeout=90, $secure=FALSE){
+	public /*resource*/ function connect($host=TRUE, $user=NULL, $pass=NULL, $port=21, $timeout=90, $secure=NULL){
 		if($host === TRUE){ $host = $this->URI; }
 		$set = self::parse_url($host); foreach($set as $k=>$v){ if(in_array($k, array('host','user','pass','port'))){ $$k = $v; } }
-		if(isset($set['scheme'])){ $secure = (!($set['scheme'] == 'ftp') ? TRUE : FALSE); }
+		if($secure === NULL && isset($set['scheme'])){ $secure = (!($set['scheme'] == 'ftp') ? TRUE : FALSE); }
 		
 		#if($user === NULL || !is_int($user)){ $port = $user; unset($user); if(!is_int($pass)){ $timeout = $pass; unset($pass); } elseif($pass === NULL){ $timeout = 90;} }
 		/*set parameters*/ $this->host = $host; $this->user = $user; $this->port = $port;
-		if(!($secure === FALSE) && function_exists('ftp_ssl_connect') ){ $this->ftp_stream = ftp_ssl_connect( (string) $host, (int) $port /*, (int) $timeout*/ ); }
+		if($secure === TRUE && function_exists('ftp_ssl_connect') ){ $this->ftp_stream = ftp_ssl_connect( (string) $host, (int) $port /*, (int) $timeout*/ ); }
 		else{ $this->ftp_stream = ftp_connect( (string) $host, (int) $port /*, (int) $timeout*/ ); }
+		if($this->ftp_stream === FALSE){ return NULL; } /*else: login >> */
 		if(isset($user) && isset($pass)){
-			return @ftp_login($this->ftp_stream, $user, $pass);
+			$this->authenticated = @ftp_login($this->ftp_stream, $user, $pass);
 		}
-		return $this->ftp_stream;
+		else{
+			$this->authenticated = @ftp_login($this->ftp_stream, 'anonymous', NULL);
+		}
+		return $this->authenticated;
 	}
 	
 	#Basic

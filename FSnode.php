@@ -45,7 +45,7 @@ function FSnode($a=NULL, $b=FALSE, $c=FALSE, $d=FALSE){
 }
 
 class FSnode extends Xnode {
-	public function Version($f=FALSE){ return '0.3.0'; }
+	public function Version($f=FALSE){ return '0.3.1'; }
 	public function Product_url($u=FALSE){ return ($u === TRUE ? "https://github.com/sentfanwyaerda/FSnode" : "http://sent.wyaerda.org/FSnode/?version=".self::Version(TRUE).'&license='.str_replace(' ', '+', self::License()) );}
 	public function Product($full=FALSE){ return "FSnode".(!($full===FALSE) ? (is_array($full) ? '(extended with '.preg_replace('#(, )([A-Z]+)$#i', ' and \\2', strtoupper(implode(', ', self::list_FSnode_extensions()))).') ' : NULL)." ".self::version(TRUE).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
 	public function License($with_link=FALSE){ return ($with_link ? '<a href="'.self::License_url().'">' : NULL).'cc-by-nd 3.0'.($with_link ? '</a>' : NULL); }
@@ -181,24 +181,6 @@ class FSnode extends Xnode {
 			/*untested*/ array_pop($hooks);
 		}
 		return $hooks;
-	}
-	/*public|private*/ /*string*/ function _filename_attach_prefix($filename=NULL){
-		if(isset($this->URI)){
-			$chroot = self::parse_url($this->URI, 'path');
-			/*fix*/ if(substr($chroot, 0, 2) == './'){ $chroot = self::Product_base().substr($chroot, 2);}
-		 	if(file_exists($chroot) /*&& is_dir($chroot)*/){
-				/*fix*/ if(substr($chroot, -1) == '/'){ $chroot = substr($chroot, 0, -1); }
-				if(!is_dir($chroot)){ $chroot = dirname($chroot); }
-			
-			
-				if(!preg_match("#^(".$chroot.")#i", $filename)){ #check for prefix: do not double prefix
-					$filename = $chroot.(!preg_match("#^[/\\/]#i", $filename) ? DIRECTORY_SEPARATOR : NULL).$filename;
-				}
-				#/*debug*/ print "<!-- \n\t".$filename."\n=\t".realpath($chroot)."\n=\t".realpath($filename)."\n -->\n";
-				if(!(substr(realpath($filename), 0, strlen(realpath($chroot))) == realpath($chroot))){ return FALSE; /*out of chroot*/ }
-			}
-		}	
-		return (string) $filename;
 	}
 	
 	public function parse_url($url, $component=-1){
@@ -451,6 +433,26 @@ class FSnode extends Xnode {
 			return FALSE;
 		}
 	}
+	public /*string*/ function realpath_URI($filename=NULL){}
+	public /*string*/ function relativepath($URI=NULL){}
+	/*public|private*/ /*string*/ function _filename_attach_prefix($filename=NULL){
+		if(isset($this->URI)){
+			$chroot = self::parse_url($this->URI, 'path');
+			/*fix*/ if(substr($chroot, 0, 2) == './'){ $chroot = self::Product_base().substr($chroot, 2);}
+		 	if(file_exists($chroot) /*&& is_dir($chroot)*/){
+				/*fix*/ if(substr($chroot, -1) == '/'){ $chroot = substr($chroot, 0, -1); }
+				if(!is_dir($chroot)){ $chroot = dirname($chroot); }
+			
+			
+				if(!preg_match("#^(".$chroot.")#i", $filename)){ #check for prefix: do not double prefix
+					$filename = $chroot.(!preg_match("#^[/\\/]#i", $filename) ? DIRECTORY_SEPARATOR : NULL).$filename;
+				}
+				#/*debug*/ print "<!-- \n\t".$filename."\n=\t".realpath($chroot)."\n=\t".realpath($filename)."\n -->\n";
+				if(!(substr(realpath($filename), 0, strlen(realpath($chroot))) == realpath($chroot))){ return FALSE; /*out of chroot*/ }
+			}
+		}	
+		return (string) $filename;
+	}
 
 	#Server Handlers
 	public /*bool*/ function close(){
@@ -476,6 +478,16 @@ class FSnode extends Xnode {
 		$result = self::file_put_contents( $this->_filename_attach_prefix( (string) $filename ), $data);
 		$this->_hook(__METHOD__, array('filename'=>$filename, 'data'=>$data, 'result'=>$result), POSTFIX);
 		return $result;
+	}
+	public /*FSfile*/ function get($filename){ return $FSfile; }
+	public /*bool*/ function put(/*(FSfile)*/ $FSfile, $filename=FALSE){
+		if(!is_object($FSfile) && get_class($FSfile) != 'FSfile'){ return /*error*/ FALSE; }
+		if($filename===FALSE){
+			return $this->write(self::relativepath($FSfile->URI), (string) $FSfile);
+		}
+		else{
+			return $this->write($filename, (string) $FSfile);
+		}
 	}
 	public /*bool*/ function delete($filename /*, (resource) $context */ ){
 		$this->_hook(__METHOD__, array('filename'=>$filename), PREFIX, TRUE);

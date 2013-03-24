@@ -1,8 +1,13 @@
+###v0.3.1
+- Reorganized the workings of mapping the relative paths to absolute paths and URIs: **FSnode::realpath()** and **FSnode::realpath_URI()**.
+- Added the classes **FSarchive** and **FSfile** (single file mount); allowing other mounts then a directory in a filesystem.
+- Added **$FSfile = FSnode::get()** and **FSnode::put($FSfile)**
+- fixed **FSnode_ftp::connect**; now it authenticates anonymous connections
 
 ###v0.3.0
 - extended **FSnode::parse_url()** with detection for *feed:https://example.com/rss.xml* and IP-addresses
 - added support for relative paths (e.g. *./*) into **FSnode_local**. Note: *../* is not allowed due to possible security issues.
-- bugfixes and some work on **FSnode_ftp** and **FSbrowser*
+- bugfixes and some work on **FSnode_ftp** and **FSbrowser**
 
 ###v0.2.11 (a.k.a. v0.3.0 beta)
 - added a preleminariy working **FSnode::load_URI()** and **FSnode()** method for loading objects through extension

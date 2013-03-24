@@ -3,10 +3,11 @@ The local implementation **FSnode** is modelled after [PHP](http://php.net/) the
 ```php
 $data = file_get_contents('index.html');
 # equals:
-$fsnode = new FSnode_local(); /*or*/ $fsnode = FSnode::load_URI('./');
+$fsnode = new FSnode_local(); /*or*/ $fsnode = FSnode::load_URI('./'); /*or*/ $fsnode = FSnode('./');
 $data = $fsnode->file_get_contents('index.html');
 # and more generic:
 $data = $fsnode->read('index.html');
+# you should use the generics to enforce future code-compatablity when accessing on other filesystems, like: ftp
 ```
 
 *see the [Class Diagram](https://github.com/sentfanwyaerda/FSnode/blob/master/manual/Class_Diagram.md) for the complete list of usable methods.*
