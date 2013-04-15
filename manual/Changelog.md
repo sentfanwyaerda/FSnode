@@ -1,3 +1,9 @@
+###v0.3.2
+- Improvement of **FSnode_ftp**, with **FSnode_ftp::realpath()** and **FSnode_ftp::is_dir()**
+- Implementation of **FSnode::realpath()**, **FSnode::realpath_URI()** and **FSnode::relativepath()**
+	- extended **FSbrowser::build_URI_info()**
+- some alterings of **FSfile**
+
 ###v0.3.1
 - Reorganized the workings of mapping the relative paths to absolute paths and URIs: **FSnode::realpath()** and **FSnode::realpath_URI()**.
 - Added the classes **FSarchive** and **FSfile** (single file mount); allowing other mounts then a directory in a filesystem.

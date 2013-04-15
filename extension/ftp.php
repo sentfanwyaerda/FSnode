@@ -44,52 +44,55 @@ class FSnode_ftp extends FSnode {
 	
 	private function _allowed_methods(){
 		#return array('chmod','chgrp','chown','copy','delete','disk_free_space','disk_total_space','file_exists','file_get_contents','file_put_contents','file','fileatime','filectime','filegroup','fileinode','filemtime','fileowner','fileperms','filesize','filetype','is_dir','is_executable','is_file','is_readable','is_writable','is_writeable','mkdir','rename','rndir','stat','touch','unlink');
-		return array('chmod','copy','file_get_contents','file_put_contents','file','filemtime','filesize','mkdir','rename','rmdir','unlink','scandir','close','connect','read','write','delete');
+		return array('chmod','copy','file_get_contents','file_put_contents','file','filemtime','filesize','is_dir','is_file','mkdir','rename','rmdir','unlink','scandir','close','connect','read','write','delete');
 	}
 	
 	/* the following FTP functions are renamed: ftp_chmod > chmod, ftp_close > close, ftp_connect > connect, ftp_delete > delete, ftp_mdtm > filemtime, ftp_mkdir > mkdir, ftp_rename > rename, ftp_rmdir > rmdir, ftp_size > filesize, ftp_nlist > scandir */
 	
 	#Filesystem Handlers
 	public /*int*/ function chmod($filename, $mode){
-		if(!self::is_connected()){ return /*error: not connected*/ FALSE; } else { return ftp_chmod($this->ftp_stream, (int) $mode, (string) $filename); }
+		if(!self::is_connected()){ return /*error: not connected*/ FALSE; } else { return ftp_chmod($this->ftp_stream, (int) $mode, (string) self::realpath($filename)); }
 	}
 	public /*dummy*/ function chgrp(){ }
 	public /*dummy*/ function chown(){ }
 	
-	public /*bool*/ function copy($source, $dest){ return self::write( (string) $dest, self::read( (string) $source ) ); }
+	public /*bool*/ function copy($source, $dest){ return self::write( (string) self::realpath($dest), self::read( (string) self::realpath($source) ) ); }
 	
 	public /*dummy*/ function disk_free_space(){ }
 	public /*dummy*/ function disk_total_space(){ }
 	
 	public /*dummy*/ function file_exists(){ }
-	public /*string*/ function file_get_contents($filename){ return self::read( (string) $filename ); } #alias
-	public /**/ function file_put_contents($filename, $data){ return self::write( (string) $filename, $data); } #alias
+	public /*string*/ function file_get_contents($filename){ return self::read( (string) self::realpath($filename) ); } #alias
+	public /**/ function file_put_contents($filename, $data){ return self::write( (string) self::realpath($filename), $data); } #alias
 	public /*array*/ function file($filename){ return explode("\n", self::file_get_contents( (string) $filename )); }
 		
 	public /*dummy*/ function fileatime(){ }
 	public /*dummy*/ function filectime(){ }
 	public /*dummy*/ function filegroup(){ }
 	public /*dummy*/ function fileinode(){ }
-	public /*int*/ function filemtime($filename){ if(!self::is_connected()){ return /*error: not connected*/ FALSE; } else { return ftp_mdtm($this->ftp_stream, (string) $filename ); } }
+	public /*int*/ function filemtime($filename){ if(!self::is_connected()){ return /*error: not connected*/ FALSE; } else { return ftp_mdtm($this->ftp_stream, (string) self::realpath($filename) ); } }
 	public /*dummy*/ function fileowner(){ }
 	public /*dummy*/ function fileperms(){ }
-	public /*int*/ function filesize($filename){ if(!self::is_connected()){ return /*error: not connected*/ FALSE; } else { return ftp_size($this->ftp_stream, (string) $filename ); } }
+	public /*int*/ function filesize($filename){ if(!self::is_connected()){ return /*error: not connected*/ FALSE; } else { return ftp_size($this->ftp_stream, (string) self::realpath($filename) ); } }
 	public /*dummy*/ function filetype(){ }
 	
-	public /*bool*/ function is_dir($filename){ return /*dummy*/ TRUE; }
+	public /*bool*/ function is_dir($filename){
+		return /*dummy*/ (in_array($filename, array('', '/')) ? TRUE : ( (string) self::filemtime($filename) == '' || (string) self::filesize($filename) == '-1' ? TRUE : FALSE));
+		#return is_dir(self::realpath_URI($filename));
+	}
 	public /*dummy*/ function is_executable($filename){ }
-	public /*dummy*/ function is_file($filename){ }
+	public /*dummy*/ function is_file($filename){ return is_file(self::realpath_URI($filename)); }
 	#public /*dummy*/ function is_link($filename){ }
 	public /*dummy*/ function is_readable($filename){ }
 	#public /*dummy*/ function is_uploaded_file($filename){ }
 	public /*dummy*/ function is_writable($filename){ }
-	public /*dummy*/ function is_writeable($filename){ return self::is_writable( (string) $filename ); } #alias
+	public /*dummy*/ function is_writeable($filename){ return self::is_writable( (string) self::realpath($filename) ); } #alias
 	
 	public /*bool*/ function is_connected($and_authenticated=TRUE){ return ($and_authenticated===TRUE ? (is_resource($this->ftp_stream) && $this->authenticated === TRUE ? TRUE : FALSE) : (is_resource($this->ftp_stream) ? TRUE : FALSE)); }
-	public /*string*/ function realpath($filename=NULL){ return ($filename===NULL ? '/' : (substr($filename, 0, 1) == '/' ? $filename : '/'.$filename)); }
+	public /*string*/ function realpath($filename=NULL){ return preg_replace('#[/]+#', '/', $this->parse_url($this->URI, 'path').($filename===NULL ? '/' : (substr($filename, 0, 1) == '/' ? $filename : '/'.$filename))); }
 	
-	public /*string*/ function mkdir($directory){ if(!self::is_connected()){ return /*error: not connected*/ FALSE; } else { return ftp_mkdir($this->ftp_stream, (string) $directory ); } }
-	public /*bool*/ function rename($oldname, $newname){ if(!self::is_connected()){ return /*error: not connected*/ FALSE; } else { return ftp_rename($this->ftp_stream, (string) $oldname, (string) $newname ); } }
+	public /*string*/ function mkdir($directory){ if(!self::is_connected()){ return /*error: not connected*/ FALSE; } else { return ftp_mkdir($this->ftp_stream, (string) self::realpath($directory) ); } }
+	public /*bool*/ function rename($oldname, $newname){ if(!self::is_connected()){ return /*error: not connected*/ FALSE; } else { return ftp_rename($this->ftp_stream, (string) self::realpath($oldname), (string) self::realpath($newname) ); } }
 	public /*bool*/ function rmdir($directory){ if(!self::is_connected()){ return /*error: not connected*/ FALSE; } else { return ftp_rmdir($this->ftp_stream, (string) $directory ); } }
 	public /*dummy*/ function stat(){ }
 	public /*dummy*/ function touch(){ }
@@ -101,6 +104,7 @@ class FSnode_ftp extends FSnode {
 		if(!self::is_connected()){ return /*error: not connected*/ array(); }
 		else { 
 			if($directory === NULL){ $directory = '.'; }
+			/*realpath fix*/ $directory = self::realpath($directory);
 			$list = ftp_nlist($this->ftp_stream, (string) $directory);
 			#/*debug*/ print '<!-- directory: '.$directory.' = '; var_dump($list); print ' x '; var_dump(ftp_rawlist($this->ftp_stream, (string) $directory)); print ' -->'."\n";
 			/*fix*/ if(strlen($directory) > 2){ $list = array_merge(array('..'), $list);}
@@ -135,6 +139,7 @@ class FSnode_ftp extends FSnode {
 	
 	#Basic
 	public /*string*/ function read($filename){
+		/*realpath fix*/ $filename = self::realpath($filename);
 		if(!self::is_connected()){ return /*error: not connected*/ FALSE; }
 		else { 
 			$temp_file = tempnam(FSnode_TEMP_DIRECTORY, 'fsnode_');
@@ -147,6 +152,7 @@ class FSnode_ftp extends FSnode {
 		}
 	}
 	public /*bool*/ function write($filename, $data){
+		/*realpath fix*/ $filename = self::realpath($filename);
 		if(!self::is_connected()){ return /*error: not connected*/ FALSE; }
 		else { 
 			$bool = TRUE;
@@ -159,7 +165,13 @@ class FSnode_ftp extends FSnode {
 			return $bool;
 		}
 	}
-	public /*bool*/ function delete($path){ if(!self::is_connected()){ return /*error: not connected*/ FALSE; } else { return ftp_delete($this->ftp_stream, (string) $path); } }
-	
+	public /*bool*/ function delete($path){
+		if(!self::is_connected()){
+			return /*error: not connected*/ FALSE;
+		} else {
+			/*realpath fix*/ $path = self::realpath($path);
+			return ftp_delete($this->ftp_stream, (string) $path);
+		}
+	}
 }
 ?>

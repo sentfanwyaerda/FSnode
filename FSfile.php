@@ -71,6 +71,9 @@ class FSfile extends Xnode {
 	}
 	public function close(){
 		#clean-up: remove file $this->_reference;
+		unlink($this->_reference);
+		$this->_reference = NULL;
+		#destroy $this
 	}
 }
 ?>

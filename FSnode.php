@@ -38,14 +38,16 @@ define('FAIL', 'fail');
 if(!defined('FSnode_ALLOW_CODE_EXECUTE')){ define('FSnode_ALLOW_CODE_EXECUTE', FALSE); }
 
 function FSnode($a=NULL, $b=FALSE, $c=FALSE, $d=FALSE){
-	#assume $a is an URI, then $b is (bool ? get result/document : connected $FSnode object). Ignore $c and $d.
-	$fs = FSnode::URI_load($a);
-	if(is_bool($b)){ return ($b ? $fs->read() : $fs); }
-	else{ return /*error*/ FALSE; }
+	$URI = FSnode::parse_url($a);
+	if(is_array($URI) && count($URI) >= 2){ #assume $a is an URI with more then only a path, then $b is (bool ? get result/document : connected $FSnode object). Ignore $c and $d.
+		$fs = FSnode::URI_load($a);
+		if(is_bool($b)){ return ($b ? $fs->read() : $fs); }
+		else{ return /*error*/ FALSE; }
+	}
 }
 
 class FSnode extends Xnode {
-	public function Version($f=FALSE){ return '0.3.1'; }
+	public function Version($f=FALSE){ return '0.3.2'; }
 	public function Product_url($u=FALSE){ return ($u === TRUE ? "https://github.com/sentfanwyaerda/FSnode" : "http://sent.wyaerda.org/FSnode/?version=".self::Version(TRUE).'&license='.str_replace(' ', '+', self::License()) );}
 	public function Product($full=FALSE){ return "FSnode".(!($full===FALSE) ? (is_array($full) ? '(extended with '.preg_replace('#(, )([A-Z]+)$#i', ' and \\2', strtoupper(implode(', ', self::list_FSnode_extensions()))).') ' : NULL)." ".self::version(TRUE).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
 	public function License($with_link=FALSE){ return ($with_link ? '<a href="'.self::License_url().'">' : NULL).'cc-by-nd 3.0'.($with_link ? '</a>' : NULL); }
@@ -135,7 +137,7 @@ class FSnode extends Xnode {
 		return $set;
 	}
 	
-	private $URI = NULL;
+	var /*private*/ $URI = NULL;
 	public /*FSnode*/ function URI_load($URI, $auto_connect=TRUE){
 		$extension = FSnode::get_FSnode_extension_by_URI($URI);
 		//*debug*/ print '<!-- FSnode extension of "'.$URI.'" is '.print_r($extension, TRUE).' -->'."\n";
@@ -425,16 +427,29 @@ class FSnode extends Xnode {
 			return scandir( $d, (int) $sorting_order /*, (resource) $context */ );
 		} else { return array(); }
 	}
+	/***************************************
+	 * self::realpath: /chroot/dir/ect/ory/file.ext
+	 * self::realpath_URI: file:/chroot/dir/ect/ory/file.ext or ftp://user@server/dir/ect/ory/file.ext
+	 * self::relativepath: ./dir/ect/ory/file.ext
+	 ***************************************/
 	public /*string*/ function realpath($filename=NULL){
 		$f = $this->_filename_attach_prefix( (string) $filename );
 		if( !($filename===NULL) && $f ){
-			return realpath( $f );
+			$f = realpath( $f );
+			/*fix*/ $f = preg_replace('#[/]+#', '/', $f.($this->is_dir($f) ? DIRECTORY_SEPARATOR : NULL));
+			return $f;
 		} else{ #returns an empty $filename to be an error
 			return FALSE;
 		}
 	}
-	public /*string*/ function realpath_URI($filename=NULL){}
-	public /*string*/ function relativepath($URI=NULL){}
+	public /*string*/ function realpath_URI($filename=NULL){
+		$URI = $this->URI.'/'.$filename;
+		/*fix*/ $URI = preg_replace('#[/]+#', '/', $URI);
+		return $URI;
+	}
+	public /*string*/ function relativepath($URI=NULL){
+		return preg_replace('#[/]+#', '/', './'.$URI);
+	}
 	/*public|private*/ /*string*/ function _filename_attach_prefix($filename=NULL){
 		if(isset($this->URI)){
 			$chroot = self::parse_url($this->URI, 'path');
@@ -479,7 +494,10 @@ class FSnode extends Xnode {
 		$this->_hook(__METHOD__, array('filename'=>$filename, 'data'=>$data, 'result'=>$result), POSTFIX);
 		return $result;
 	}
-	public /*FSfile*/ function get($filename){ return $FSfile; }
+	public /*FSfile*/ function get($filename){
+		$FSfile = new FSfile(self::realpath_URI($filename), $this);
+		return $FSfile;
+	}
 	public /*bool*/ function put(/*(FSfile)*/ $FSfile, $filename=FALSE){
 		if(!is_object($FSfile) && get_class($FSfile) != 'FSfile'){ return /*error*/ FALSE; }
 		if($filename===FALSE){
@@ -510,11 +528,15 @@ class FSnode extends Xnode {
 	
 	#Basic extended
 	public /*mixed*/ function execute($line=NULL){
+		$this->_hook(__METHOD__, array('line'=>$line, 'data'=>$data), PREFIX, TRUE);
 		if(FSnode_ALLOW_CODE_EXECUTE){
 			exec($line);
 		}
+		$this->_hook(__METHOD__, array('line'=>$line, 'data'=>$data), POSTFIX);
 	}
 	public /*bool*/ function refresh($tag=NULL){
+		$this->_hook(__METHOD__, array('tag'=>$tag), PREFIX, TRUE);
+		$this->_hook(__METHOD__, array('tag'=>$tag), POSTFIX);
 		return TRUE;
 	}
 	public /*string*/ function mime_content_type($filename){
