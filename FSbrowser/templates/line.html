@@ -1,8 +1,11 @@
 <!-- [icon][name]\t[last modified]\t[size]\t[actions:edit?,delete?]?\t[description]? -->
 <tr>
 	<td><div class="fileicon {file:type.class}">&nbsp;</div><a href="{file:url}">{file:name.full}</a></td>
+	<td>{file:perms|}</td>
 	<td>{file:modified.last}</td>
 	<td>{file:size}</td>
+	<td>{file:owner|}</td>
+	<td>{file:group|}</td>
 	<td>{actions(file)}</td>
 	<td><em>{file:description}</em></td>
 </tr>

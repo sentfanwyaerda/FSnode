@@ -23,6 +23,36 @@ function parse_template($src, $set=array(), $prefix='{', $postfix='}'){
 	foreach($set as $tag=>$value){
 		$str = str_replace($prefix.$tag.$postfix, $value, $str);
 	}
+	if(preg_match_all("#".escape_preg_chars($prefix)."([^\?".escape_preg_chars($postfix)."]{0,})\?([^:]+)[:]([^".escape_preg_chars($postfix)."]{0,})".escape_preg_chars($postfix)."#i", $str, $buffer)){
+		//*debug*/ print '<!-- '; print_r($buffer); print ' -->';
+		if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
+			$str = str_replace($original, $buffer[(isset($set[$buffer[1][$i]]) && ( is_bool($set[$buffer[1][$i]]) ? $set[$buffer[1][$i]] : TRUE) ? 2 : 3)][$i], $str);
+		}}
+	}
+	if(preg_match_all("#".escape_preg_chars($prefix)."([^\|".escape_preg_chars($postfix)."]{0,})[\|]([^".escape_preg_chars($postfix)."]{0,})".escape_preg_chars($postfix)."#i", $str, $buffer)){
+		if(isset($buffer[0]) && is_array($buffer[0])){foreach($buffer[0] as $i=>$original){
+			$str = str_replace($original, (isset($set[$buffer[1][$i]]) ? $set[$buffer[1][$i]] : $buffer[2][$i]), $str);
+		}}
+	}
+	return $str;
+}
+function escape_preg_chars($str, $qout=array(), $merge=FALSE){
+	if($merge !== FALSE){
+		$qout = array_merge(array('\\'), (is_array($qout) ? $qout : array($qout)), array('[',']','(',')','{','}','$','+','^','-'));
+		#/*debug*/ print_r($qout);
+	}
+	if(is_array($qout)){
+		$i = 0;
+		foreach($qout as $k=>$v){
+			if($i == $k){
+				$str = str_replace($v, '\\'.$v, $str);
+			} else{
+				$str = str_replace($k, $v, $str);	
+			}
+			$i++;
+		}
+	}
+	else{ $str = str_replace($qout, '\\'.$qout, $str); }
 	return $str;
 }
 ?>

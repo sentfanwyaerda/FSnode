@@ -26,7 +26,7 @@ require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'extra-library.php');
 session_start();
 
 class FSbrowser{
-	public function Version($f=FALSE){ return '0.3.2'; }
+	public function Version($f=FALSE){ return '0.3.3'; }
 	public function Product_url($u=FALSE){ return ($u === TRUE ? "https://github.com/sentfanwyaerda/FSnode" : "http://sent.wyaerda.org/FSbrowser/".'?version='.self::Version(TRUE).'&license='.str_replace(' ', '+', self::License()) );}
 	public function Product($full=FALSE){ return "FSnode Browser".($full ? " ".self::version(TRUE).(class_exists('FSnode') && method_exists('FSnode', 'Product') ? '/'.FSnode::Product(TRUE) : NULL).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
 	public function License($with_link=FALSE){ return ($with_link ? '<a href="'.self::License_url().'">' : NULL).'cc-by-nd 3.0'.($with_link ? '</a>' : NULL); }
@@ -79,7 +79,7 @@ class FSbrowser{
 			/*fix*/ $subURI = str_replace(DIRECTORY_SEPARATOR, '/',  preg_replace("#^".$this->handler->realpath('/')."#", '', $this->handler->realpath($subURI)) );
 			/*fix*/ if(substr($subURI, 0, 1) != DIRECTORY_SEPARATOR){ $subURI = DIRECTORY_SEPARATOR.$subURI; }
 			/*debug*/ print '<!-- FSbrowser::build.$subURI: '.$subURI.' ['.$this->handler->is_dir($subURI).'] -->'."\n";
-			if($this->handler->is_dir($subURI)){
+			if($this->handler->is_dir($subURI, 'only_by_logic')){
 				$list = $this->handler->scandir(str_replace(array('[',']','{','}'), array('\[','\]','\{','\}'), $subURI));
 				/*fix: on scandir error */ if(!is_array($list)){ $list = array(); }
 				foreach($list as $f){
@@ -89,6 +89,9 @@ class FSbrowser{
 						'file:url' => preg_replace('#[/'.DIRECTORY_SEPARATOR.']+#', '/', './FSbrowser.php?URI='.($f == '..' ? DIRECTORY_SEPARATOR .$this->label.dirname($subURI).DIRECTORY_SEPARATOR: DIRECTORY_SEPARATOR .$this->label.$subURI. DIRECTORY_SEPARATOR .$f.($this->handler->is_dir($subURI. DIRECTORY_SEPARATOR .$f) ? DIRECTORY_SEPARATOR : NULL)) ),
 						'file:type.class' => ($f == '..' ? 'parent-directory' : ($this->handler->is_dir($subURI. DIRECTORY_SEPARATOR .$f) ? 'directory' : strtolower(preg_replace("#^(.*)[.]([a-z0-9]+)$#i", "\\2", $f)).' '.preg_replace("#[^a-z0-9-]#i", "-", $this->handler->mime_content_type($subURI. DIRECTORY_SEPARATOR .$f)) )),
 						'file:modified.last' => date('d-M-Y H:i', $this->handler->filemtime($subURI. DIRECTORY_SEPARATOR .$f) ),
+						'file:owner' => $this->handler->fileowner($subURI. DIRECTORY_SEPARATOR .$f),
+						'file:group' => $this->handler->filegroup($subURI. DIRECTORY_SEPARATOR .$f),
+						'file:perms' => $this->handler->fileperms($subURI. DIRECTORY_SEPARATOR .$f),
 						'file:size' => ($this->handler->file_exists($subURI. DIRECTORY_SEPARATOR .$f) && !$this->handler->is_dir($subURI. DIRECTORY_SEPARATOR .$f) ? $this->_humanizeFileSize( $this->handler->filesize($subURI. DIRECTORY_SEPARATOR .$f)) : NULL),
 						'file:description' => $this->handler->mime_content_type($subURI. DIRECTORY_SEPARATOR .$f),
 						'actions(file)' => NULL,
@@ -98,11 +101,22 @@ class FSbrowser{
 				ksort($lines);
 			}
 			
-			$set = array('title'=>'Index of '.preg_replace('#[/]+#', '/', $this->handler->relativepath($subURI).($this->handler->is_dir($subURI) ? DIRECTORY_SEPARATOR : NULL)),'connection:status'=>($this->handler->is_connected() ? 'connected' : 'unconnected'),'include:lines()'=>implode($lines),'footer'=>NULL,'URI'=>$this->URI,'label'=>$this->label,'meta-information'=>$this->build_URI_info($subURI));
+			$set = array('title'=>'Index of '.preg_replace('#[/]+#', '/', $this->handler->relativepath($subURI).($this->handler->is_dir($subURI) ? DIRECTORY_SEPARATOR : NULL)),'connection:status'=>($this->handler->is_connected() ? 'connected' : 'unconnected'),'include:lines()'=>implode($lines),'footer'=>NULL,'URI'=>$this->URI,'label'=>$this->build_label(),'meta-information'=>$this->build_URI_info($subURI));
 			return parse_template('templates/overview.html', $set);
 		}
 		else{
 			return $this->build_connect($subURI);
+		}
+	}
+	function build_label(){
+		if(FALSE){
+			return $this->label;
+		} else {
+			$options = array();
+			foreach($_SESSION['URI_db'] as $label=>$URI){
+				$options[] = parse_template('templates/select-option.html', array('label' => $label, 'value' => '/'.$label.'/', 'selected' => ($label == $this->label ), 'alt'=>str_replace(':', '&#58;', $URI)));
+			}
+			return parse_template('templates/chroot-select.html', array('options' => implode('', $options)));
 		}
 	}
 	function build_connect($URI=NULL){
@@ -111,6 +125,7 @@ class FSbrowser{
 	}
 	function build_URI_info($subURI=NULL){
 		$fullURI = $subURI.($this->handler->is_dir($subURI) ? '/' : NULL);
+		/*fix*/ if($subURI == '/'){ $subURI = '/.'; }
 		$set = array(
 		#	'' => $this->handler->($URI),
 			'subURI' => $subURI,
@@ -120,13 +135,14 @@ class FSbrowser{
 			'realpath_URI' => $this->handler->realpath_URI($fullURI),
 			'relativepath' => $this->handler->relativepath($fullURI),
 		);
-		foreach(array('fileatime'=>2,'filectime'=>2,'filegroup'=>1,'fileinode'=>1,'filemtime'=>2,'fileowner'=>1,'fileperms'=>1,'filesize'=>3,'filetype'=>1,'file_exists'=>9,'is_dir'=>9,'is_executable'=>9,'is_file'=>9,'is_readable'=>9,'is_writeable'=>9,'disk_free_space'=>3,'disk_total_space'=>3,'mime_content_type'=>1 /*,'stat'=>5*/) as $method=>$action){
-			$set[$method] = $this->handler->$method($subURI);
+		foreach(array('fileatime'=>2,'filectime'=>2,'filegroup'=>1,'fileinode'=>1,'filemtime'=>2,'fileowner'=>1,'fileperms'=>1,'filesize'=>3,'filetype'=>1,'file_exists'=>9,'is_dir'=>9,'is_executable'=>9,'is_file'=>9,'is_readable'=>9,'is_writeable'=>9,'disk_free_space'=>3,'disk_total_space'=>3,'mime_content_type'=>1,'rawlist'=>0 /*,'stat'=>5*/) as $method=>$action){
+			$set[$method] = (method_exists($this->handler, $method) ? $this->handler->$method($subURI) : NULL);
 			switch($action){
 				case 2: /*timestamp*/ $set[$method] = ($set[$method] ? date("Y-m-d H:i:s", $set[$method]) : NULL); break;
 				case 3: /*filesize*/ $set[$method] = ($set[$method] >= 0 ? self::_humanizeFileSize($set[$method]) : NULL); break;
 				case 5: /*array*/ $set[$method] = print_r($set[$method], true); break;
 				case 9: /*bool*/ $set[$method] = self::_bool_toString($set[$method]); break;
+				case 0: /*var_dump*/ $set[$method] = var_export($set[$method], TRUE); break;
 				default: /*do nothing*/
 			}
 		}
@@ -183,6 +199,6 @@ if(defined('ALLOW_FSbrowser') && ALLOW_FSbrowser === TRUE ){
 	print $FSbrowser->build($subURI);
 	#/*debug*/ print '<pre>$->scandir('.$subURI.') ='; print_r( $FSbrowser->handler->scandir($subURI) ); print '</pre>';
 	
-	/*debug*/ if(isset($_GET['debug']) || isset($_SESSION['debug'])){ print '<pre>$FSbrowser = '; print_r($FSbrowser); print '</pre>';}
+	/*debug*/ if(isset($_GET['debug']) || isset($_SESSION['debug'])){ print '<pre>$FSbrowser = '; print '</pre>';}
 }
 ?>

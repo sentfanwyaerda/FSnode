@@ -1,3 +1,10 @@
+###v0.3.3
+- **FSbrowser** supports active switching between chroot's through a form-select beneath 'Index of ./'
+- **FSbrowser** now also shows *perms*, *owner* and *group*
+- **FSnode_ftp** implements fileinfo like *fileatime*, *filectime*, *fileperms* and derivable flags like *is_writeable*
+- **FSnode_ftp** goes from *experimental* to *beta*
+- NO CHANGES in **FSnode** itself
+
 ###v0.3.2
 - Improvement of **FSnode_ftp**, with **FSnode_ftp::realpath()** and **FSnode_ftp::is_dir()**
 - Implementation of **FSnode::realpath()**, **FSnode::realpath_URI()** and **FSnode::relativepath()**

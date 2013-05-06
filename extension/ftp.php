@@ -29,7 +29,7 @@ define('FSnode_FTP_URI_PREFIX', 'ftp:// ftps:// sftp://');
 define('FSnode_FTP_SCHEME', 'ftp');
 
 class FSnode_ftp extends FSnode {
-	public function Version($a=FALSE){ return (/*!(parent::version(TRUE) == self::version(FALSE)) && */ !($a==FALSE) ? parent::version(TRUE).'-' : NULL).'experimental'; }
+	public function Version($a=FALSE){ return (/*!(parent::version(TRUE) == self::version(FALSE)) && */ !($a==FALSE) ? parent::version(TRUE).'-' : NULL).'beta'; }
 	public function Product($full=FALSE){ return "FSnode:ftp".(!($full===FALSE) ? " ".self::version(TRUE).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
 	
 	private /*resource*/ $ftp_stream;
@@ -61,32 +61,69 @@ class FSnode_ftp extends FSnode {
 	public /*dummy*/ function disk_free_space(){ }
 	public /*dummy*/ function disk_total_space(){ }
 	
-	public /*dummy*/ function file_exists(){ }
+	public /*dummy*/ function file_exists($filename){ $buff = self::rawlist(dirname($filename), FALSE, basename($filename)); return (strlen($buff['filename']) > 0);  }
 	public /*string*/ function file_get_contents($filename){ return self::read( (string) self::realpath($filename) ); } #alias
 	public /**/ function file_put_contents($filename, $data){ return self::write( (string) self::realpath($filename), $data); } #alias
 	public /*array*/ function file($filename){ return explode("\n", self::file_get_contents( (string) $filename )); }
 		
-	public /*dummy*/ function fileatime(){ }
-	public /*dummy*/ function filectime(){ }
-	public /*dummy*/ function filegroup(){ }
-	public /*dummy*/ function fileinode(){ }
-	public /*int*/ function filemtime($filename){ if(!self::is_connected()){ return /*error: not connected*/ FALSE; } else { return ftp_mdtm($this->ftp_stream, (string) self::realpath($filename) ); } }
-	public /*dummy*/ function fileowner(){ }
-	public /*dummy*/ function fileperms(){ }
-	public /*int*/ function filesize($filename){ if(!self::is_connected()){ return /*error: not connected*/ FALSE; } else { return ftp_size($this->ftp_stream, (string) self::realpath($filename) ); } }
-	public /*dummy*/ function filetype(){ }
-	
-	public /*bool*/ function is_dir($filename){
-		return /*dummy*/ (in_array($filename, array('', '/')) ? TRUE : ( (string) self::filemtime($filename) == '' || (string) self::filesize($filename) == '-1' ? TRUE : FALSE));
-		#return is_dir(self::realpath_URI($filename));
+	public /*dummy*/ function fileatime($filename){ return self::filemtime($filename); }
+	public /*dummy*/ function filectime($filename){ return self::filemtime($filename); }
+	public /*dummy*/ function filegroup($filename){ $buff = self::rawlist(dirname($filename), FALSE, basename($filename)); return $buff['group'];  }
+	public /*dummy*/ function fileinode($filename){ }
+	public /*int*/ function filemtime($filename){
+		if(!self::is_connected()){ return /*error: not connected*/ FALSE; }
+		else {
+			if(self::is_dir($filename)){
+				$buff = self::rawlist(dirname($filename), FALSE, basename($filename));
+				return $buff['filemtime'];
+			}
+			else{
+				return ftp_mdtm($this->ftp_stream, (string) self::realpath($filename) );
+			}
+		}
 	}
-	public /*dummy*/ function is_executable($filename){ }
-	public /*dummy*/ function is_file($filename){ return is_file(self::realpath_URI($filename)); }
-	#public /*dummy*/ function is_link($filename){ }
-	public /*dummy*/ function is_readable($filename){ }
+	public /*dummy*/ function fileowner($filename){ $buff = self::rawlist(dirname($filename), FALSE, basename($filename)); return $buff['owner']; }
+	public /*dummy*/ function fileperms($filename){ $buff = self::rawlist(dirname($filename), FALSE, basename($filename)); return $buff['perms']; }
+	public /*int*/ function filesize($filename){ if(!self::is_connected()){ return /*error: not connected*/ FALSE; } else { return ftp_size($this->ftp_stream, (string) self::realpath($filename) ); } }
+	public /*dummy*/ function filetype($filename){ }
+	
+	public /*bool*/ function is_dir($filename, $use_method=2){
+		switch($use_method){
+			case 0: case 'only_by_logic'; return /*dummy*/ (in_array($filename, array('', '/')) ? /*is_root=>is_dir*/ TRUE : ( (string) self::filemtime($filename) == '' || (string) self::filesize($filename) == '-1' ? TRUE : FALSE)); break;
+			case 1: /*untested*/ return is_dir(self::realpath_URI($filename)); break;
+			case 2: case 'rawlist': #default:
+				$buff = self::rawlist(dirname($filename), FALSE, basename($filename)); return ($buff['flag'] == 'd' ? TRUE : FALSE); break;
+		}
+	}
+	public /*dummy*/ function is_executable($filename){ return self::_perms_analyse($filename, 'x'); }
+	public /*dummy*/ function is_file($filename){ $buff = self::rawlist(dirname($filename), FALSE, basename($filename)); return ($buff['flag'] == '-' ? TRUE : FALSE); /*return is_file(self::realpath_URI($filename));*/ }
+	public /*dummy*/ function is_link($filename){ $buff = self::rawlist(dirname($filename), FALSE, basename($filename)); return ($buff['flag'] == 'l' ? TRUE : FALSE); }
+	public /*dummy*/ function is_readable($filename){ return self::_perms_analyse($filename, 'r'); }
 	#public /*dummy*/ function is_uploaded_file($filename){ }
-	public /*dummy*/ function is_writable($filename){ }
-	public /*dummy*/ function is_writeable($filename){ return self::is_writable( (string) self::realpath($filename) ); } #alias
+	public /*dummy*/ function is_writable($filename){ return self::_perms_analyse($filename, 'w'); }
+	public /*dummy*/ function is_writeable($filename){ return self::is_writable( $filename ); } #alias
+	
+	private /*bool*/ function _perms_analyse($filename, $right="r" /*r|w|x*/, $level="owner" /*owner|group|anonymous*/){
+		#if(!in_array(strtolower($right), array('r','w','x'))){ return /*error*/ NULL; }
+		$buff = self::rawlist(dirname($filename), FALSE, basename($filename));
+		$perms = $buff['perms'];
+		if(preg_match("#^[0]?[0-7]{3}$#", $perms)){ /*add fix for 0777 style perms*/ }
+		switch(strtolower($level)){
+			case 'owner': 
+				if(self::parse_url($this->URI, 'user') != $buff['owner']){
+					$perms = str_repeat('-', 3).substr($perms, -6);
+				}
+			case 'group': /*should also test if 'user' is part of 'group' */
+				if(self::parse_url($this->URI, 'user') != $buff['owner']){
+					$perms = str_repeat('-', 3).substr($perms, -6, 3).str_repeat('-', 3);
+				}
+				break;
+			case 'anonymous': default:
+				$perms = str_repeat('-', 6).substr($perms, -3);
+		}
+		/*debug*/ print '<!-- '.$right.'-check '.$buff['perms'].' '.$filename.' ('.$level.': '.$perms.') -->'."\n";
+		return (bool) preg_match("#".$right."#i", $perms);
+	}
 	
 	public /*bool*/ function is_connected($and_authenticated=TRUE){ return ($and_authenticated===TRUE ? (is_resource($this->ftp_stream) && $this->authenticated === TRUE ? TRUE : FALSE) : (is_resource($this->ftp_stream) ? TRUE : FALSE)); }
 	public /*string*/ function realpath($filename=NULL){ return preg_replace('#[/]+#', '/', $this->parse_url($this->URI, 'path').($filename===NULL ? '/' : (substr($filename, 0, 1) == '/' ? $filename : '/'.$filename))); }
@@ -95,7 +132,7 @@ class FSnode_ftp extends FSnode {
 	public /*bool*/ function rename($oldname, $newname){ if(!self::is_connected()){ return /*error: not connected*/ FALSE; } else { return ftp_rename($this->ftp_stream, (string) self::realpath($oldname), (string) self::realpath($newname) ); } }
 	public /*bool*/ function rmdir($directory){ if(!self::is_connected()){ return /*error: not connected*/ FALSE; } else { return ftp_rmdir($this->ftp_stream, (string) $directory ); } }
 	public /*dummy*/ function stat(){ }
-	public /*dummy*/ function touch(){ }
+	public /*dummy*/ function touch($filename){ /*not implemented yet*/ }
 	public /**/ function unlink($path){ return self::delete($path); } #dummy
 	
 	#Directory Handlers
@@ -113,7 +150,7 @@ class FSnode_ftp extends FSnode {
 		}
 	}
 	public /*array*/ function scan($directory=NULL, $sorting_order=SCANDIR_SORT_ASCENDING){
-		return $this->scandir($directory, $sorting_order);
+		return self::scandir($directory, $sorting_order);
 	}
 	
 	#Server Handlers
@@ -171,6 +208,55 @@ class FSnode_ftp extends FSnode {
 		} else {
 			/*realpath fix*/ $path = self::realpath($path);
 			return ftp_delete($this->ftp_stream, (string) $path);
+		}
+	}
+	
+	public /*array|assigned*/ function rawlist($directory, $recursive=FALSE, $assigned=TRUE){
+		if(!self::is_connected()){ return /*error: not connected*/ FALSE; }
+		else { 
+			if(isset($this->cache[md5($directory)])){
+				$buff = $this->cache[md5($directory)];
+			}
+			else{
+				$buff = $this->cache[md5($directory)] = ftp_rawlist($this->ftp_stream, (string) self::realpath($directory), $recursive);
+			}
+			if($assigned !== FALSE){
+				#if( ftp_systype($this->ftp_stream) == 'UNIX')
+				$set = array();
+				foreach($buff as $i=>$line){
+					if(preg_match("#^([dl-])([rwx-]{9})\s+[0-9]+\s+([^ ]+)\s+([^ ]+)\s+([0-9]+[kMGb]{0,2})\s+([a-z0-9: ]{12})\s+(.*)$#i", $line, $buffer)){
+						if(preg_match("# -> #i", $buffer[7])){
+							$lbuf = explode(' -> ', $buffer[7]);
+							$fn = $lbuf[0];
+							$set[$fn]['link-target'] = $lbuf[1];
+						} else{
+							$fn = $buffer[7];
+						}
+						$set[$fn] = array_merge(array(
+							'flag' => $buffer[1],
+							'perms' => $buffer[2],
+							//'?' => $buffer[@2],
+							'owner' => $buffer[3],
+							'group' => $buffer[4],
+							'filesize' => $buffer[5],
+							'filemtime' => strtotime($buffer[6]),
+							'filename' => $fn
+						), (isset($set[$fn]) && is_array($set[$fn]) ? $set[$fn] : array()));
+					}
+				}
+				if($assigned === TRUE){
+					return $set;
+				} elseif( !isset($set[$assigned]) ){ return array(
+							'flag' => FALSE,
+							'perms' => '---------',
+							'owner' => NULL,
+							'group' => NULL,
+							'filesize' => -1,
+							'filemtime' => NULL,
+							'filename' => $assigned);
+				} else { return $set[$assigned]; }
+			}
+			else{ return $buff; }
 		}
 	}
 }
