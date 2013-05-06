@@ -47,7 +47,7 @@ function FSnode($a=NULL, $b=FALSE, $c=FALSE, $d=FALSE){
 }
 
 class FSnode extends Xnode {
-	public function Version($f=FALSE){ return '0.3.2'; }
+	public function Version($f=FALSE){ return '0.3.3'; }
 	public function Product_url($u=FALSE){ return ($u === TRUE ? "https://github.com/sentfanwyaerda/FSnode" : "http://sent.wyaerda.org/FSnode/?version=".self::Version(TRUE).'&license='.str_replace(' ', '+', self::License()) );}
 	public function Product($full=FALSE){ return "FSnode".(!($full===FALSE) ? (is_array($full) ? '(extended with '.preg_replace('#(, )([A-Z]+)$#i', ' and \\2', strtoupper(implode(', ', self::list_FSnode_extensions()))).') ' : NULL)." ".self::version(TRUE).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
 	public function License($with_link=FALSE){ return ($with_link ? '<a href="'.self::License_url().'">' : NULL).'cc-by-nd 3.0'.($with_link ? '</a>' : NULL); }
