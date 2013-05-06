@@ -393,7 +393,11 @@ class FSnode extends Xnode {
 	public /*int*/ function fileinode($filename){ return fileinode( $this->_filename_attach_prefix( (string) $filename ) ); }
 	public /*int*/ function filemtime($filename){ return filemtime( $this->_filename_attach_prefix( (string) $filename ) ); }
 	public /*int*/ function fileowner($filename){ return fileowner( $this->_filename_attach_prefix( (string) $filename ) ); }
-	public /*int*/ function fileperms($filename){ return fileperms( $this->_filename_attach_prefix( (string) $filename ) ); }
+	public /*int*/ function fileperms($filename, $UNIX=TRUE){
+		$perms = fileperms( $this->_filename_attach_prefix( (string) $filename ) );
+		if($UNIX == TRUE){ $perms = substr(sprintf('%o', $perms), -4); }
+		return $perms;
+	}
 	public /*int*/ function filesize($filename){ return filesize( $this->_filename_attach_prefix( (string) $filename ) ); }
 	public /*int*/ function filetype($filename){ return filetype( $this->_filename_attach_prefix( (string) $filename ) ); }
 	

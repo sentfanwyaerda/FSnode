@@ -3,7 +3,7 @@
 - **FSbrowser** now also shows *perms*, *owner* and *group*
 - **FSnode_ftp** implements fileinfo like *fileatime*, *filectime*, *fileperms* and derivable flags like *is_writeable*
 - **FSnode_ftp** goes from *experimental* to *beta*
-- NO CHANGES in **FSnode** itself
+- fixed **FSnode->fileperms()** to return a value you can use to chmod, like 0777
 
 ###v0.3.2
 - Improvement of **FSnode_ftp**, with **FSnode_ftp::realpath()** and **FSnode_ftp::is_dir()**
