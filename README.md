@@ -12,11 +12,12 @@ FSnode is a node-based Uniform FileSystem handler, written in [PHP](http://php.n
 ```
 
 ###Extensions available:
-- [local file system](https://github.com/sentfanwyaerda/FSnode/blob/master/manual/FSnode_local.md) ( *file:/* )
-- [FTP file systems](https://github.com/sentfanwyaerda/FSnode/blob/master/manual/FSnode_ftp.md) ( *ftp://* )
+- [local file system](./manual/FSnode_local.md) ( *file:/* )
+- [FTP file systems](./manual/FSnode_ftp.md) ( *ftp://* )
 - ...more coming soon, like: Dropbox, Zip/gz/bz, Git
+- [UAPI](https://github.com/sentfanwyaerda/UAPI)
 
-**Manual:** see *[./manual/Introduction.md](https://github.com/sentfanwyaerda/FSnode/blob/master/manual/Introduction.md)*
+**Manual:** see *[./manual/Introduction.md](./manual/Introduction.md)*
 
 
 **License:** [cc-by-nd](http://creativecommons.org/licenses/by-nd/3.0/)
