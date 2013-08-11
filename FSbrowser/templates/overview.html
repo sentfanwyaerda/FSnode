@@ -1,7 +1,13 @@
 <style>
-.fileicon, #connection { display: inline-block; background-color: #C9C9C9; width: 16px; height: 16px; margin-right: 8px; text-indent: -9999px; }
+.fileicon, #connection { display: inline-block; width: 20px; height: 22px; margin-right: 8px; text-indent: -9999px; }
 #connection.connected, .connected { color: white; background-color: #99F999; }
 #connection.unconnected, .unconnected { color: white; background-color: #F99999; }
+
+
+.fileicon.directory { background-image: url(/icons/folder.gif); }
+.fileicon.parent-directory { background-image: url(/icons/back.gif); }
+.fileicon.html, .fileicon.txt { background-image: url(/icons/text.gif); }
+.fileicon { background-image: url(/icons/unknown.gif); }
 </style>
 
 <table class="fsbrowser overview">
