@@ -18,9 +18,7 @@ class FSmirror{
 	function FSmirror($local, $remote, $ignore=array(), $recursive=FALSE){
 		/*force FSnode*/ $this->local = $local;
 		/*force FSnode*/ $this->remote = $remote;
-		if(!is_array($ignore) || $ignore === array() ){
-			$this->ignore = FSmirror::ignore();
-		} else { $this->ignore = $ignore; }
+		$this->ignore = FSmirror::ignore( (!is_array($ignore) ? array() : $ignore) );
 		$this->recursive = $recursive;
 	}
 	
@@ -30,22 +28,41 @@ class FSmirror{
 	private function _push_or_pull($filename=NULL, $force=FALSE, $a='local'){
 		$b = (!in_array(strtolower($a), array('push','remote')) ? 'local' : 'remote');
 		$a = ($b != 'local' ? 'local' : 'remote'); //fix: in case $a != (local|remote)
+		$ignore_directory = (!$force);
 		$res = TRUE;
 		if(is_array($filename)){ $list = $filename; }
 		else{ $list = self::scandir($filename); }
+				
+		$compare = self::compare($list, $force);
 		
 		foreach($list as $file){
 			$action = array();
-			/*debug*/ print ($a == 'local' ? 'PUSH' : 'PULL').' '.$file."\n";
-			if($this->$a->is_file($file)){
-				$this->$b->write($file, $this->$a->read($file)); $action[] = 'replace';
-			}
-			elseif($this->$a->is_dir($file)){
-				if(!$this->$b->file_exists($file)){
-					if($this->$b->method_exists('mkdir')){ $this->$b->mkdir($file); $action[] = 'mkdir'; }
+			//*debug*/ print '<!-- '.$file.' [a='.$a.'] ('.print_r($compare[$file]['action'], TRUE).') do '.($a == 'local' ? 'PUSH' : 'PULL').' -->';
+			if( isset($compare[$file]) && ($a == 'local' ? 'push' : 'pull') == $compare[$file]['action'] ){
+				/*debug*/ print ($a == 'local' ? 'PUSH' : 'PULL').' '.$file."\n";
+				if($this->$a->file_exists($file) && $this->$a->is_file($file)){
+					$action[] = ($this->$a->file_exists($file) ? 'replace file' : 'add file');
+					$this->$b->write($file, $this->$a->read($file));
+				}
+				elseif($this->$a->file_exists($file) && $this->$a->is_dir($file)){
+					if(!$this->$b->file_exists($file)){
+						if($this->$b->method_exists('mkdir')){ $this->$b->mkdir($file); $ignore_directory = FALSE; $action[] = 'mkdir'; }
+					}
+				}
+				elseif(!$this->$a->file_exists($file) && $force != FALSE){
+					if($this->$b->file_exists($file) && $this->$b->is_file($file)){ $this->$b->unlink($file); $action[] = 'delete file'; }
+					elseif($this->$b->file_exists($file) && $this->$b->is_dir($file)){ $this->$b->rmdir($file); $action[] = 'delete directory'; }
+				}
+				
+				if(($ignore_directory != TRUE && $this->$b->is_dir($file)) || $this->$b->is_file($file) ){
+					if($this->$b->method_exists('chmod') && $this->$a->method_exists('fileperms')){ $this->$b->chmod($file, octdec($this->$a->fileperms($file, TRUE))); $action[] = 'chmod ('.$this->$a->fileperms($file, TRUE).')'; }
+				
+					if($this->$b->method_exists('touch')){ $this->$b->touch($file, $this->$a->filemtime($file)); $action[] = 'touch'; }
 				}
 			}
-			if($this->$b->method_exists('touch')){ $this->$b->touch($file, $this->$a->filemtime($file)); $action[] = 'touch'; }
+			else {
+				$action[] = 'ignore '.($b == 'local' ? 'push' : 'pull');
+			}
 			$this->log[] = array((!$this->$a->is_dir($file) ? 'file' : 'directory')=>$file,'action'=>array_merge(array(($a == 'local' ? 'push' : 'pull')), $action));
 		}
 		return $res;
@@ -61,9 +78,15 @@ class FSmirror{
 		if(is_array($filename)){ $list = $filename; }
 		else{ $list = self::scandir($filename); }
 		
+		$compare = self::compare($list, $force);
+		
 		foreach($list as $file){
-			$compare = self::compare($file, $force);
-			if(in_array(strtolower($compare[$file]['action']), array('push','pull') )){ self::_push_or_pull($file, $force, $compare[$file]['action']); }
+			if(in_array(strtolower($compare[$file]['action']), array('push','pull') )){
+				self::_push_or_pull(array($file), $force, $compare[$file]['action']);
+			}
+			else {
+				$this->log[] = array(($this->local->is_dir($file) || $this->remote->is_dir($file) ? 'directory' : 'file')=>$file,'action'=>array('synchronized'));
+			}
 		}
 		return $res;
 	}
@@ -112,9 +135,13 @@ class FSmirror{
 			//if(!in_array($file, $this->ignore) ){
 			if(!self::_preg_array_match($this->ignore, $file, 'OR')){
 				if(($this->local->is_dir($file) || $this->remote->is_dir($file) ) ){
-					$list[] = $this->_generate_filename($filename, $file.DIRECTORY_SEPARATOR);
-					if($recursive !== FALSE && !in_array($this->_generate_filename($filename, $file.DIRECTORY_SEPARATOR), $list) && !in_array($file, array('/','')) && !in_array($filename, array('/','')) ){
+					/*debug*/ print '<!-- advise recursive scandir for: '.$this->_generate_filename($filename, $file.DIRECTORY_SEPARATOR).' -->';
+					if($recursive !== FALSE && !in_array($this->_generate_filename($filename, $file.DIRECTORY_SEPARATOR), $list) && !in_array($file, array('/','')) ){
+						// && !in_array($filename, array('/',''))
 						$list = array_merge($list, self::scandir($this->_generate_filename($filename, $file.DIRECTORY_SEPARATOR), $recursive));
+					}
+					else{
+						$list[] = $this->_generate_filename($filename, $file.DIRECTORY_SEPARATOR);
 					}
 				}
 				else {
@@ -132,7 +159,9 @@ class FSmirror{
 			//if(!($this->local->is_dir($directory) || $this->remote->is_dir($directory)) ){
 			//	return $this->_generate_filename(dirname($directory).DIRECTORY_SEPARATOR, $file);
 			//}
-			return $directory.(strlen($directory) == 0 || preg_match('#'.DIRECTORY_SEPARATOR.'$#', $directory) || in_array($file, array('/','')) ? NULL : DIRECTORY_SEPARATOR).$file;
+			$res = $directory.(strlen($directory) == 0 || preg_match('#'.DIRECTORY_SEPARATOR.'$#', $directory) || in_array($file, array('/','')) ? NULL : DIRECTORY_SEPARATOR).$file;
+			if(preg_match("#^[/]+$#", $res)){ return '/';}
+			return preg_replace("#^/(.*)$#", "\\1", preg_replace("#//#", "/", $res));
 		}
 	}
 	private function _preg_array_match($patterns=array(), $needle=NULL, $operator=OPERATOR_AND){
