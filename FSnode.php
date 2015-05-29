@@ -456,6 +456,7 @@ class FSnode extends Xnode {
 	}
 	/*public|private*/ /*string*/ function _filename_attach_prefix($filename=NULL){
 		if(isset($this->URI)){
+			//*debug*/ print '<!-- '.$filename.' @('.$this->URI.') = ';
 			$chroot = self::parse_url($this->URI, 'path');
 			/*fix*/ if(substr($chroot, 0, 2) == './'){ $chroot = self::Product_base().substr($chroot, 2);}
 		 	if(file_exists($chroot) /*&& is_dir($chroot)*/){
@@ -467,8 +468,9 @@ class FSnode extends Xnode {
 					$filename = $chroot.(!preg_match("#^[/\\/]#i", $filename) ? DIRECTORY_SEPARATOR : NULL).$filename;
 				}
 				#/*debug*/ print "<!-- \n\t".$filename."\n=\t".realpath($chroot)."\n=\t".realpath($filename)."\n -->\n";
-				if(!(substr(realpath($filename), 0, strlen(realpath($chroot))) == realpath($chroot))){ return FALSE; /*out of chroot*/ }
+				//if(!(substr(realpath($filename), 0, strlen(realpath($chroot))) == realpath($chroot))){ return FALSE; /*out of chroot*/ }
 			}
+			//*debug*/ print $filename.' -->';
 		}	
 		return (string) $filename;
 	}
