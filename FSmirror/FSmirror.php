@@ -8,18 +8,30 @@ class FSmirror{
 	var $local; // "local", location A
 	var $remote; // "remote", location B
 	
-	var $ignore = array();
+	var $ignore_switch = FALSE;
+	var $preg_list = array();
 	var $recursive = FALSE;
 	
 	var $log = array();
 	
-	public function ignore($set=array()){ return array_merge(array('^[.]{1,2}$'), $set); }
+	public function ignore($set=array()){ return array_unique(array_merge((isset($this) && $this->ignore_switch == FALSE ? array('^[.]{1,2}$') : array()), $set)); }
 	
-	function FSmirror($local, $remote, $ignore=array(), $recursive=FALSE){
-		/*force FSnode*/ $this->local = $local;
-		/*force FSnode*/ $this->remote = $remote;
-		$this->ignore = FSmirror::ignore( (!is_array($ignore) ? array() : $ignore) );
+	function FSmirror($local, $remote, $preg_list=array(), $recursive=FALSE, $ignore_switch=FALSE){
+		/*force FSnode*/ $this->local = (is_string($local) ? FSnode::URI_load($local) : $local);
+		/*force FSnode*/ $this->remote = (is_string($remote) ? FSnode::URI_load($remote) : $remote);
+		$this->ignore_switch = $ignore_switch;
+		$this->preg_list = FSmirror::ignore( (!is_array($preg_list) ? array() : $preg_list) );
 		$this->recursive = $recursive;
+		
+		//$this->connect();
+	}
+	function connect(){
+		$this->local->connect();
+		$this->remote->connect();		
+	}
+	function close(){
+		$this->local->close();
+		$this->remote->close();
 	}
 	
 	function get_local(){ return $this->local; }
@@ -125,15 +137,16 @@ class FSmirror{
 			if($this->local->is_dir($filename) || $this->remote->is_dir($filename)){
 				$lr[] = NULL;
 			}
-			$local_list = $this->local->scandir($filename);
-			$remote_list = $this->remote->scandir($filename);
+			$local_list = ($this->local->file_exists($filename) ? $this->local->scandir($filename) : array());
+			$remote_list = ($this->local->file_exists($filename) ? $this->remote->scandir($filename) : array());
 			$lr = array_unique(array_merge($lr, $local_list, $remote_list));
 		}
 		/*fix*/ ksort($lr);
 		foreach($lr as $file){
 			//if(!preg_match('#^[\.]{1,2}$#i', $file)){
-			//if(!in_array($file, $this->ignore) ){
-			if(!self::_preg_array_match($this->ignore, $file, 'OR')){
+			//if(!in_array($file, $this->preg_list) ){
+			//if(($this->ignore_switch == FALSE ? !self::_preg_array_match($this->preg_list, $file, 'OR') : self::_preg_array_match($this->preg_list, $file, 'OR'))){
+			if(!self::_preg_array_match($this->preg_list, $file, 'OR')){
 				if(($this->local->is_dir($file) || $this->remote->is_dir($file) ) ){
 					/*debug*/ print '<!-- advise recursive scandir for: '.$this->_generate_filename($filename, $file.DIRECTORY_SEPARATOR).' -->';
 					if($recursive !== FALSE && !in_array($this->_generate_filename($filename, $file.DIRECTORY_SEPARATOR), $list) && !in_array($file, array('/','')) ){
@@ -166,11 +179,18 @@ class FSmirror{
 	}
 	private function _preg_array_match($patterns=array(), $needle=NULL, $operator=OPERATOR_AND){
 		$bool = ($operator == OPERATOR_OR ? FALSE : TRUE);
-		foreach($patterns as $pattern){
-			if(preg_match('#'.$pattern.'#i', $needle)){
-				$bool = ($operator == OPERATOR_OR ? TRUE : ($bool && TRUE));
-			} else {
-				$bool = ($operator == OPERATOR_OR ? $bool : ($bool && FALSE));
+		if(is_array($needle)){
+			foreach($needle as $n){
+				$bool = ($operator == OPERATOR_OR ? ($bool || self::_preg_array_match($patterns, $n, $operator)) : ($bool && self::_preg_array_match($patterns, $n, $operator)) ); 
+			}
+		}
+		else{
+			foreach($patterns as $pattern){
+				if(preg_match('#'.$pattern.'#i', $needle)){
+					$bool = ($operator == OPERATOR_OR ? TRUE : ($bool && TRUE));
+				} else {
+					$bool = ($operator == OPERATOR_OR ? $bool : ($bool && FALSE));
+				}
 			}
 		}
 		return $bool;

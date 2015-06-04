@@ -425,6 +425,7 @@ class FSnode extends Xnode {
 	
 	#Directory Handlers
 	public /*directory*/ function scandir($directory=NULL, $sorting_order=SCANDIR_SORT_ASCENDING /*, (resource) $context */ ){
+		/*fix*/ if(!$this->is_dir('/')){ return array(); }
 		if($directory === NULL){ $directory = './'; } 
 		$d = $this->_filename_attach_prefix( (string) $directory );
 		if($d && is_dir($d)){
@@ -470,6 +471,7 @@ class FSnode extends Xnode {
 				#/*debug*/ print "<!-- \n\t".$filename."\n=\t".realpath($chroot)."\n=\t".realpath($filename)."\n -->\n";
 				//if(!(substr(realpath($filename), 0, strlen(realpath($chroot))) == realpath($chroot))){ return FALSE; /*out of chroot*/ }
 			}
+			else{ return ($filename != '/' ? FALSE : $chroot); }
 			//*debug*/ print $filename.' -->';
 		}	
 		return (string) $filename;
@@ -483,6 +485,8 @@ class FSnode extends Xnode {
 	}
 	public /*bool*/ function connect($a=NULL, $b=NULL, $c=NULL, $d=NULL, $timeout=90, $secure=FALSE){
 		$this->_hook(__METHOD__, array(), PREFIX, TRUE);
+		//*debug*/ print 'CONNECT '.$this->URI.' ('.$this->_filename_attach_prefix( '/' ).') <b>'.(self::is_dir('/') && self::file_exists('/') ? 'exists' : 'unable')."</b>\n";
+		//*fix*/ if(!( self::is_dir('/') ) ){ self::mkdir('/'); }
 		$this->_hook(__METHOD__, array(), POSTFIX);
 		return TRUE;
 	}
