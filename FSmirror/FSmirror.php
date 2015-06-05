@@ -129,6 +129,8 @@ class FSmirror{
 	function scandir($filename=NULL, $recursive=NULL){
 		if($recursive === NULL){ $recursive = $this->recursive; }
 		$list = $lr = array();
+		
+		/*fix*/ if(!(isset($this->local) && is_object($this->local)) || !(isset($this->remote) && is_object($this->remote)) ){ return array(); }
 				
 		if($this->local->is_file($filename) || $this->remote->is_file($filename)){
 			$lr[] = $filename; $filename = NULL;
