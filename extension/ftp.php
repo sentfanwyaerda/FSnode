@@ -61,7 +61,10 @@ class FSnode_ftp extends FSnode {
 	public /*dummy*/ function disk_free_space(){ }
 	public /*dummy*/ function disk_total_space(){ }
 	
-	public /*dummy*/ function file_exists($filename){ $buff = self::rawlist(dirname($filename), FALSE, basename($filename)); return (strlen($buff['filename']) > 0);  }
+	public /*dummy*/ function file_exists($filename){
+		$buff = self::rawlist(dirname($filename), FALSE, basename($filename));
+		return (strlen($buff['filename']) > 0 && $buff['filesize'] > -1 );
+	}
 	public /*string*/ function file_get_contents($filename){ return self::read( (string) self::realpath($filename) ); } #alias
 	public /**/ function file_put_contents($filename, $data){ return self::write( (string) self::realpath($filename), $data); } #alias
 	public /*array*/ function file($filename){ return explode("\n", self::file_get_contents( (string) $filename )); }
@@ -87,13 +90,9 @@ class FSnode_ftp extends FSnode {
 	public /*int*/ function filesize($filename){ if(!self::is_connected()){ return /*error: not connected*/ FALSE; } else { return ftp_size($this->ftp_stream, (string) self::realpath($filename) ); } }
 	public /*dummy*/ function filetype($filename){ }
 	
-	public /*bool*/ function is_dir($filename, $use_method=2){
-		switch($use_method){
-			case 0: case 'only_by_logic'; return /*dummy*/ (in_array($filename, array('', '/')) ? /*is_root=>is_dir*/ TRUE : ( (string) self::filemtime($filename) == '' || (string) self::filesize($filename) == '-1' ? TRUE : FALSE)); break;
-			case 1: /*untested*/ return is_dir(self::realpath_URI($filename)); break;
-			case 2: case 'rawlist': #default:
-				$buff = self::rawlist(dirname($filename), FALSE, basename($filename)); return ($buff['flag'] == 'd' ? TRUE : FALSE); break;
-		}
+	public /*bool*/ function is_dir($filename){
+		$buff = self::rawlist(dirname($filename), FALSE, basename($filename));
+		return ($buff['flag'] == 'd' ? TRUE : FALSE); 
 	}
 	public /*dummy*/ function is_executable($filename){ return self::_perms_analyse($filename, 'x'); }
 	public /*dummy*/ function is_file($filename){ $buff = self::rawlist(dirname($filename), FALSE, basename($filename)); return ($buff['flag'] == '-' ? TRUE : FALSE); /*return is_file(self::realpath_URI($filename));*/ }
@@ -103,11 +102,13 @@ class FSnode_ftp extends FSnode {
 	public /*dummy*/ function is_writable($filename){ return self::_perms_analyse($filename, 'w'); }
 	public /*dummy*/ function is_writeable($filename){ return self::is_writable( $filename ); } #alias
 	
-	private /*bool*/ function _perms_analyse($filename, $right="r" /*r|w|x*/, $level="owner" /*owner|group|anonymous*/){
+	private /*bool*/ function _perms_analyse($filename, $right="r" /*r|w|x*/, $level="owner" /*owner|group|[world|anonymous]*/){
 		#if(!in_array(strtolower($right), array('r','w','x'))){ return /*error*/ NULL; }
 		$buff = self::rawlist(dirname($filename), FALSE, basename($filename));
 		$perms = $buff['perms'];
-		if(preg_match("#^[0]?[0-7]{3}$#", $perms)){ /*add fix for 0777 style perms*/ }
+		if(preg_match("#^[0]?[0-7]{3}$#", $perms)){
+			/*fix for 0777 style perms*/ $perms = self::fileperms2rights(decoct($perms));
+			}
 		switch(strtolower($level)){
 			case 'owner': 
 				if(self::parse_url($this->URI, 'user') != $buff['owner']){
@@ -118,7 +119,7 @@ class FSnode_ftp extends FSnode {
 					$perms = str_repeat('-', 3).substr($perms, -6, 3).str_repeat('-', 3);
 				}
 				break;
-			case 'anonymous': default:
+			case 'anonymous': case 'world': default:
 				$perms = str_repeat('-', 6).substr($perms, -3);
 		}
 		/*debug*/ print '<!-- '.$right.'-check '.$buff['perms'].' '.$filename.' ('.$level.': '.$perms.') -->'."\n";
@@ -235,6 +236,7 @@ class FSnode_ftp extends FSnode {
 						$set[$fn] = array_merge(array(
 							'flag' => $buffer[1],
 							'perms' => $buffer[2],
+							'chmod' => decoct(self::rights2fileperms($buffer[1].$buffer[2])),
 							//'?' => $buffer[@2],
 							'owner' => $buffer[3],
 							'group' => $buffer[4],

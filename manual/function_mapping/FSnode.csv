@@ -1,0 +1,158 @@
+scope,resulttype,,METHOD or VARIABLE,ARGUMENTS,FSnode,FSnode_local,FSnode_ftp,FSnode_dropbox,Required by:,FSfile,FSbrowser,FSmirror
+,,,,,,,,,,,,
+global,mixed,,(),"?, ?, ?, ?",YES,,,,,YES,YES,YES
+,,,,,,,,,,,,
+OBJECT VARIABLES,,,,,,,,,,,,
+private,array,$,hooks,,YES,inherit,inherit,,,,,
+var,string,$,URI,,YES,inherit,inherit,,,YES,YES,
+,,,,,,,,,,,,
+private,resource,$,ftp_stream,,,,YES,,,,,
+private,bool,$,authenticated,,,,YES,,,,,
+,,,,,,,,,,,,
+var,class FSnode_*,$,fsnode,,,,,,,YES,,
+private,,$,_reverence,,,,,,,,,
+,,,,,,,,,,,,
+var,string,$,label,,,,,,,,YES,
+var,class FSnode_*,$,handler,,,,,,,,YES,
+,,,,,,,,,,,,
+var,class FSnode_*,$,local,,,,,,,,,YES
+var,class FSnode_*,$,remote,,,,,,,,,YES
+var,bool,$,ignore_switch,,,,,,,,,YES
+var,array,$,preg_list,,,,,,,,,YES
+var,bool,$,recursive,,,,,,,,,YES
+var,array,$,log,,,,,,,,,YES
+,,,,,,,,,,,,
+META DATA FUNCTIONS,,,,,,,,,,,,
+public,string,::,Version,(bool),YES,YES,YES,YES,,YES,YES,
+public,string,::,Product_url,(bool),YES,inherit,inherit,,,YES,YES,
+public,string,::,Product,(bool),YES,YES,YES,YES,,YES,YES,
+public,string,::,License,(bool),YES,inherit,inherit,,,YES,YES,
+public,string,::,License_url,-,YES,inherit,inherit,,,YES,YES,
+public,string,::,Product_base,-,YES,inherit,inherit,,,YES,YES,
+public,string,::,Product_file,(bool),YES,inherit,inherit,,,YES,YES,
+,,,,,,,,,,,,
+public,bool,::,AutoUpdate,-,YES,inherit,inherit,,,,,
+,,,,,,,,,,,,
+INITIAL FUNCTIONS,,,,,,,,,,,,
+initial,,::,FSnode,"?, ?, ?, ?",YES,inherit,inherit,,,,,
+private,,::,_initialize,"?, ?, ?, ?",UNDER CONSTRUCTION,,,,,,,
+,,,,,,,,,,,,
+METHODS TESTING,,,,,,,,,,,,
+private,array,::,_allowed_methods,-,as local,YES,YES,NO,,,,YES
+public,bool,::,method_exists,(string),YES,inherit,inherit,,,,,YES + REQUIRED
+,,,,,,,,,,,,
+SERIALIZATION,,,,,,,,,,,,
+public,string,::,__toString,-,DUMMY,YES,DUMMY,,,YES,,
+,,,,,,,,,,,,
+HOOKS,,,,,,,,,,,,
+private,bool,::,_hook,"(string) hook, (array) vars",YES,inherit,inherit,,,,,
+public,bool,::,add_hook,"(string) hook, (bool) auto load",YES,inherit,inherit,,,,,
+,,,,,,,,,,,,
+EXTENSIONS,,,,,,,,,,,,
+public,bool,::,load_extension,(string),YES,inherit,inherit,,,,REQUIRED,
+public,bool,::,load_FSnode_extension,(string),YES,inherit,inherit,,,,,
+public,array,::,list_FSnode_extensions,-,YES,inherit,inherit,,,,,
+,,,,,,,,,,,,
+URI and URL HANDLING,,,,,,,,,,,,
+public,class FSnode_*,::,URI_load,"(string) URI, (bool) auto connect",YES,inherit,inherit,,,,REQUIRED,REQUIRED
+public,string | FALSE,::,get_FSnode_extension_by_URI,(string) URI,YES,inherit,inherit,,,,,
+public,array,::,get_FSnode_hooks_by_URI,(string) URI,YES,inherit,inherit,,,,,
+,,,,,,,,,,,,
+public,array,::,parse_url,"url, component",YES,inherit,inherit,,,,REQUIRED,
+public,string,::,rebuild_url,(array) arguments,YES,inherit,inherit,,,,,
+,,,,,,,,,,,,
+FILESYSTEM HANDLER FUNCTIONS,,,,,,,,,,,,
+public,bool,::,chmod,"filename, mode",as local,inherit,YES,,,,,SUGGESTED
+public,bool,::,chgrp,"filename, group",as local,inherit,DUMMY,,,,,
+public,bool,::,chown,"filename, user",as local,inherit,DUMMY,,,,,
+,,,,,,,,,,,,
+public,bool,::,copy,"source, dest",as local,inherit,YES,,,,,
+,,,,,,,,,,,,
+public,float,::,disk_free_space,directory?,as local,inherit,DUMMY,,,,LINE 138 REQUIRED,
+public,float,::,disk_total_space,directory?,as local,inherit,DUMMY,,,,LINE 138 REQUIRED,
+,,,,,,,,,,,,
+public,bool,::,file_exists,filename,as local,inherit,YES,,,,REQUIRED,REQUIRED
+public,string,::,file_get_contents,filename,as local,inherit,ALIAS,,,,,
+public,int,::,file_put_contents,"filename, data, flags",as local,inherit,ALIAS,,,,,
+public,array,::,file,"filename, flags",as local,inherit,ALIAS,,,,,
+,,,,,,,,,,,,
+public,int,::,fileatime,filename,as local,inherit,ALIAS,,,,LINE 138 REQUIRED,
+public,int,::,filectime,filename,as local,inherit,ALIAS,,,,LINE 138 REQUIRED,
+public,int,::,filegroup,filename,as local,inherit,UNDER CONSTRUCTION,,,,REQUIRED,SUGGESTED
+public,int,::,fileinode,filename,as local,inherit,DUMMY,,,,LINE 138 REQUIRED,
+public,int,::,filemtime,filename,as local,inherit,YES,,,,REQUIRED,SUGGESTED
+public,int,::,fileowner,filename,as local,inherit,UNDER CONSTRUCTION,,,,REQUIRED,SUGGESTED
+public,int,::,fileperms,filename,as local,inherit,UNDER CONSTRUCTION,,,,REQUIRED,SUGGESTED
+public,int,::,filesize,filename,as local,inherit,YES,,,,REQUIRED,SUGGESTED
+public,int,::,filetype,filename,as local,inherit,DUMMY,,,,,
+,,,,,,,,,,,,
+public,bool,::,is_dir,filename,as local,inherit,UNDER CONSTRUCTION,,,,REQUIRED,REQUIRED
+public,bool,::,is_executable,filename,as local,inherit,UNDER CONSTRUCTION,,,,LINE 138 REQUIRED,SUGGESTED
+public,bool,::,is_file,filename,as local,inherit,UNDER CONSTRUCTION,,,,LINE 138 REQUIRED,REQUIRED
+public,bool,::,is_link,filename,NO,,UNDER CONSTRUCTION,,,,,
+public,bool,::,is_readable,filename,as local,inherit,UNDER CONSTRUCTION,,,,LINE 138 REQUIRED,SUGGESTED
+public,bool,::,is_uploaded_file,filename,NO,,,,,,,
+public,bool,::,is_writable,filename,as local,inherit,UNDER CONSTRUCTION,,,,,SUGGESTED
+public,bool,::,is_writeable,filename,ALIAS,inherit,ALIAS,,,,LINE 138 REQUIRED,
+,,,,,,,,,,,,
+public,bool,::,is_connected,-,DUMMY,YES,YES,,,,REQUIRED,
+,,,,,,,,,,,,
+public,bool,::,mkdir,"pathname, mode, recursive",as local,inherit,YES,,,,,SUGGESTED
+public,bool,::,rename,"old, new",as local,inherit,YES,,,,,
+public,bool,::,rmdir,dirname,as local,inherit,YES,,,,,REQUIRED
+public,array,::,stat,filename,as local,inherit,DUMMY,,,,LINE 138 REQUIRED,
+public,bool,::,touch,"filename, time, atime",as local,inherit,UNDER CONSTRUCTION,,,,,SUGGESTED
+public,bool,::,unlink,filename,as local,inherit,ALIAS,,,,,REQUIRED
+,,,,,,,,,,,,
+DIRECTORY HANDLER FUNCTIONS,,,,,,,,,,,,
+public,array,::,scandir,"directory, sorting order",as local,inherit,YES,,,,REQUIRED,YES + REQUIRED
+public,string,::,realpath,filename,as local,inherit,YES,,,,REQUIRED,
+public,string,::,realpath_URI,filename,as local,inherit,inherit,,,,REQUIRED,
+public,string,::,relativepath,URI,as local,inherit,inherit,,,,REQUIRED,
+,string,::,_filename_attach_prefix,filename,as local,inherit,inherit,,,,,
+,,,,,,,,,,,,
+GENERIC HANDLER FUNCTIONS,,,,,,,,,,,,
+public,bool,::,close,-,as local,inherit,YES,,,YES,,YES
+public,bool,::,connect,"?, ?, ?, ?, timeout, secure",as local,inherit,YES,,,YES,YES + REQUIRED,YES
+public,string,::,read,filename,as local,inherit,YES,,,UNDER CONSTRUCTION + REQUIRED,,REQUIRED
+public,int,::,write,"filename, data",as local,inherit,YES,,,UNDER CONSTRUCTION + REQUIRED,,REQUIRED
+public,class FSfile,::,get,filename,as local,inherit,inherit,,,,,
+public,bool,::,put,"(object), filename",as local,inherit,inherit,,,,,
+public,bool,::,delete,filename,as local,inherit,YES,,,,,
+public,array,::,scan,"directory, sorting order",as local,inherit,ALIAS,,,,,
+public,mixed,::,execute,line,as local,inherit,NO,,,,,
+public,bool,::,refresh,tag?,as local,inherit,NO,,,,,
+public,string,::,mime_content_type,filename,as local,inherit,inherit,,,,REQUIRED,
+public,bool,::,open,"URI, refesh",NO,,,,,YES,,
+public,int,::,save,as,NO,,,,,YES,,
+,,,,,,,,,,,,
+GLOBAL FUNCTIONS,,,,,,,,,,,,
+global,octal,::,rights2fileperms,rights,YES,inherit,inherit,,,,,
+global,string,::,fileperms2rights,perms,YES,inherit,inherit,,,,,
+,,,,,,,,,,,,
+EXPERIMENTAL and ASSISTING FUNCTIONS,,,,,,,,,,,,
+private,bool,::,_perms_analyse,,NO,NO,YES,,,,,
+,mixed,::,rawlist,,NO,NO,YES,,,,LINE 138 REQUIRED,
+,,,,,,,,,,,,
+,,,,,,,,,,,,
+,,,,,,,,,,,,
+,,,,,,,,,,,,
+HIGHER LEVEL OBJECT FUNCTIONS,,,,,,,,,,,,
+,,::,getURI_by_SESSION_and_PREFIX,,,,,,,,YES,
+,,::,build,,,,,,,,YES,
+,,::,build_label,,,,,,,,YES,
+,,::,build_connect,,,,,,,,YES,
+,,::,build_URI_info,,,,,,,,YES,
+private,,::,_bool_toString,,,,,,,,YES,
+private,,::,_humanizeFileSize,,,,,,,,YES,
+,,,,,,,,,,,,
+public,,::,ignore,,,,,,,,,YES
+,,::,get_local,,,,,,,,,YES
+,,::,get_remote,,,,,,,,,YES
+private,,::,_push_or_pull,,,,,,,,,YES
+,,::,push,,,,,,,,,YES
+,,::,pull,,,,,,,,,YES
+,,::,sync,,,,,,,,,YES
+,,::,compare,,,,,,,,,YES
+private,,::,_generate_filename,,,,,,,,,YES
+private,,::,_preg_array_match,,,,,,,,,YES

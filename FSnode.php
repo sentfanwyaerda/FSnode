@@ -373,7 +373,7 @@ class FSnode extends Xnode {
 	/* ignores the following Filesystem&Directory Functions ( http://php.net/manual/en/ref.filesystem.php & http://php.net/manual/en/ref.dir.php ) functions: basename, clearstatcace, dirname, diskfreespace*, fclose, feof, fflush, fgetc, fgetcsv, fgets, fgetss, flock, fnmatch, fopen, fpassthru, fputcsv, fputs, fread, fscanf, fseek, fstat, ftell, ftruncate, fwrite, glob, is_link, is_uploaded_file, lchgrp,, lchown, link, linkinfo, lstat, move_uploaded_file, parse_ini_file, parse_ini_string, pathinfo, pclose, popen, readfile, readlink, realpath_cache_get, realpath_cache_size, realpath, rewind, set_file_buffer, symlink, tempnam, umask & chdir, chroot, closedir, dir, getcwd, opendir, readdir, rewinddir */
 	
 	#Filesystem Handlers
-	public /*bool*/ function chmod($filename, $mode){ return chmod( $this->_filename_attach_prefix( (string) $filename ), (int) $mode ); }
+	public /*bool*/ function chmod($filename, $mode){ return @chmod( $this->_filename_attach_prefix( (string) $filename ), (int) $mode ); }
 	public /*bool*/ function chgrp($filename, $group){ return chgrp( $this->_filename_attach_prefix( (string) $filename ), $group ); }
 	public /*bool*/ function chown($filename, $user){ return chown( $this->_filename_attach_prefix( (string) $filename ), $user ); }
 	
@@ -419,7 +419,7 @@ class FSnode extends Xnode {
 	public /*bool*/ function touch($filename, $time=NULL, $atime=0){
 		if($time === NULL){ $time = time(); }
 		if($atime === 0){ $atime = time(); }
-		return touch( $this->_filename_attach_prefix( (string) $filename ), (int) $time, (int) $atime );
+		return @touch( $this->_filename_attach_prefix( (string) $filename ), (int) $time, (int) $atime );
 	}
 	public /*bool*/ function unlink($filename /*, (resource) $context */ ){ return unlink( $this->_filename_attach_prefix( (string) $filename ) /*, (resource) $context */  ); }
 	
@@ -465,7 +465,7 @@ class FSnode extends Xnode {
 				if(!is_dir($chroot)){ $chroot = dirname($chroot); }
 			
 			
-				if(!preg_match("#^(".$chroot.")#i", $filename)){ #check for prefix: do not double prefix
+				if(!preg_match("#^".str_replace(array('[',']','(',')'), array('\[','\]','\(','\)'), $chroot)."#i", $filename)){ #check for prefix: do not double prefix
 					$filename = $chroot.(!preg_match("#^[/\\/]#i", $filename) ? DIRECTORY_SEPARATOR : NULL).$filename;
 				}
 				#/*debug*/ print "<!-- \n\t".$filename."\n=\t".realpath($chroot)."\n=\t".realpath($filename)."\n -->\n";
@@ -557,6 +557,93 @@ class FSnode extends Xnode {
 			return $mime;
 		}
 		return NULL;
+	}
+	
+	
+	#Additional functionality
+	function rights2fileperms($rights=NULL){ //accepts strings like: "-rw-r--r--"
+		if(preg_match("#^([slbdcpu-])([r-])([w-])([xsS-])([r-])([w-])([xsS-])([r-])([w-])([xtT-])$#", (string) $rights, $buffer)){
+			$perms = 0x0000;
+			switch($buffer[1]){ //ignore/default: u
+				case 's': $perms += 0xC000; break;
+				case 'l': $perms += 0xA000; break;
+				case '-': $perms += 0x8000; break;
+				case 'b': $perms += 0x6000; break;
+				case 'd': $perms += 0x4000; break;
+				case 'c': $perms += 0x2000; break;
+				case 'p': $perms += 0x1000; break;
+			}
+			if($buffer[2] == 'r'){ $perms += 0x0100; }
+			if($buffer[3] == 'w'){ $perms += 0x0080; }
+			switch($buffer[4]){ //ignore/default: -
+				case 's': $perms += 0x0040 + 0x0800; break;
+				case 'x': $perms += 0x0040; break;
+				case 'S': $perms += 0x0800; break;
+			}
+			if($buffer[5] == 'r'){ $perms += 0x0020; }
+			if($buffer[6] == 'w'){ $perms += 0x0010; }
+			switch($buffer[7]){ //ignore/default: -
+				case 's': $perms += 0x0008 + 0x0400; break;
+				case 'x': $perms += 0x0008; break;
+				case 'S': $perms += 0x0400; break;
+			}
+			if($buffer[8] == 'r'){ $perms += 0x0004; }
+			if($buffer[9] == 'w'){ $perms += 0x0002; }
+			switch($buffer[10]){ //ignore/default: -
+				case 't': $perms += 0x0001 + 0x0200; break;
+				case 'x': $perms += 0x0001; break;
+				case 'T': $perms += 0x0200; break;
+			}
+			return $perms; //decoct($perms);
+		}
+		else{ return decoct(0); }
+	}
+	function fileperms2rights($perms=NULL){
+		//source: http://php.net/manual/en/function.fileperms.php
+		if (($perms & 0xC000) == 0xC000) {
+			// Socket
+			$info = 's';
+		} elseif (($perms & 0xA000) == 0xA000) {
+			// Symbolic Link
+			$info = 'l';
+		} elseif (($perms & 0x8000) == 0x8000) {
+			// Regular
+			$info = '-';
+		} elseif (($perms & 0x6000) == 0x6000) {
+			// Block special
+			$info = 'b';
+		} elseif (($perms & 0x4000) == 0x4000) {
+			// Directory
+			$info = 'd';
+		} elseif (($perms & 0x2000) == 0x2000) {
+			// Character special
+			$info = 'c';
+		} elseif (($perms & 0x1000) == 0x1000) {
+			// FIFO pipe
+			$info = 'p';
+		} else {
+			// Unknown
+			$info = 'u';
+		}
+		// Owner
+		$info .= (($perms & 0x0100) ? 'r' : '-');
+		$info .= (($perms & 0x0080) ? 'w' : '-');
+		$info .= (($perms & 0x0040) ?
+					(($perms & 0x0800) ? 's' : 'x' ) :
+					(($perms & 0x0800) ? 'S' : '-'));
+		// Group
+		$info .= (($perms & 0x0020) ? 'r' : '-');
+		$info .= (($perms & 0x0010) ? 'w' : '-');
+		$info .= (($perms & 0x0008) ?
+					(($perms & 0x0400) ? 's' : 'x' ) :
+					(($perms & 0x0400) ? 'S' : '-'));
+		// World
+		$info .= (($perms & 0x0004) ? 'r' : '-');
+		$info .= (($perms & 0x0002) ? 'w' : '-');
+		$info .= (($perms & 0x0001) ?
+					(($perms & 0x0200) ? 't' : 'x' ) :
+					(($perms & 0x0200) ? 'T' : '-'));
+		return $info;
 	}
 }
 /*To make sure FSnode_local is loaded*/
