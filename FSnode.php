@@ -35,7 +35,9 @@ define('PREFIX', 'prefix');
 define('POSTFIX', 'postfix');
 define('ITTERATION', 'itteration');
 define('FAIL', 'fail');
+define('MIXED', 'mixed');
 if(!defined('FSnode_ALLOW_CODE_EXECUTE')){ define('FSnode_ALLOW_CODE_EXECUTE', FALSE); }
+if(!defined('FSnode_DEBUG')){ define('FSnode_DEBUG', FALSE); }
 
 function FSnode($a=NULL, $b=FALSE, $c=FALSE, $d=FALSE){
 	$URI = FSnode::parse_url($a);
@@ -47,7 +49,7 @@ function FSnode($a=NULL, $b=FALSE, $c=FALSE, $d=FALSE){
 }
 
 class FSnode extends Xnode {
-	public function Version($f=FALSE){ return '0.3.3'; }
+	public function Version($f=FALSE){ return '0.4.0'; }
 	public function Product_url($u=FALSE){ return ($u === TRUE ? "https://github.com/sentfanwyaerda/FSnode" : "http://sent.wyaerda.org/FSnode/?version=".self::Version(TRUE).'&license='.str_replace(' ', '+', self::License()) );}
 	public function Product($full=FALSE){ return "FSnode".(!($full===FALSE) ? (is_array($full) ? '(extended with '.preg_replace('#(, )([A-Z]+)$#i', ' and \\2', strtoupper(implode(', ', self::list_FSnode_extensions()))).') ' : NULL)." ".self::version(TRUE).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
 	public function License($with_link=FALSE){ return ($with_link ? '<a href="'.self::License_url().'">' : NULL).'cc-by-nd 3.0'.($with_link ? '</a>' : NULL); }
@@ -393,10 +395,13 @@ class FSnode extends Xnode {
 	public /*int*/ function fileinode($filename){ return fileinode( $this->_filename_attach_prefix( (string) $filename ) ); }
 	public /*int*/ function filemtime($filename){ return filemtime( $this->_filename_attach_prefix( (string) $filename ) ); }
 	public /*int*/ function fileowner($filename){ return fileowner( $this->_filename_attach_prefix( (string) $filename ) ); }
-	public /*int*/ function fileperms($filename, $UNIX=TRUE){
+	public /*int*/ function fileperms($filename, $UNIX=FALSE){
 		$perms = fileperms( $this->_filename_attach_prefix( (string) $filename ) );
-		if($UNIX == TRUE){ $perms = substr(sprintf('%o', $perms), -4); }
-		return $perms;
+		if($UNIX == TRUE){ return preg_replace("#^([0-7])([0-7]{3})$#", "\\1x\\2", substr(sprintf('%o', $perms), -4)); }
+		else{return '0x'.decoct($perms);}
+	}
+	public /*string*/ function filerights($filename, $UNIX=FALSE){
+		return self::fileperms2rights(octdec(self::fileperms($filename, $UNIX)));
 	}
 	public /*int*/ function filesize($filename){ return filesize( $this->_filename_attach_prefix( (string) $filename ) ); }
 	public /*int*/ function filetype($filename){ return filetype( $this->_filename_attach_prefix( (string) $filename ) ); }
@@ -562,17 +567,19 @@ class FSnode extends Xnode {
 	
 	#Additional functionality
 	function rights2fileperms($rights=NULL){ //accepts strings like: "-rw-r--r--"
-		if(preg_match("#^([slbdcpu-])([r-])([w-])([xsS-])([r-])([w-])([xsS-])([r-])([w-])([xtT-])$#", (string) $rights, $buffer)){
+		if(preg_match("#^([slbdcpu-])?([r-])([w-])([xsS-])([r-])([w-])([xsS-])([r-])([w-])([xtT-])$#", (string) $rights, $buffer)){
 			$perms = 0x0000;
-			switch($buffer[1]){ //ignore/default: u
-				case 's': $perms += 0xC000; break;
-				case 'l': $perms += 0xA000; break;
-				case '-': $perms += 0x8000; break;
-				case 'b': $perms += 0x6000; break;
-				case 'd': $perms += 0x4000; break;
-				case 'c': $perms += 0x2000; break;
-				case 'p': $perms += 0x1000; break;
-			}
+			if(isset($buffer[1])){
+				switch($buffer[1]){ //ignore/default: u
+					case 's': $perms += 0xC000; break;
+					case 'l': $perms += 0xA000; break;
+					case '-': $perms += 0x8000; break;
+					case 'b': $perms += 0x6000; break;
+					case 'd': $perms += 0x4000; break;
+					case 'c': $perms += 0x2000; break;
+					case 'p': $perms += 0x1000; break;
+				}
+			} else { $perms += 0x8000; }
 			if($buffer[2] == 'r'){ $perms += 0x0100; }
 			if($buffer[3] == 'w'){ $perms += 0x0080; }
 			switch($buffer[4]){ //ignore/default: -
@@ -644,6 +651,27 @@ class FSnode extends Xnode {
 					(($perms & 0x0200) ? 't' : 'x' ) :
 					(($perms & 0x0200) ? 'T' : '-'));
 		return $info;
+	}
+	
+	var $debugging = array();
+	/* how to use: self::log(NULL, __METHOD__, __FILE__.':'.__LINE__); */
+	function log($description=NULL, $method=__METHOD__, $location=NULL, $result=MIXED, $input=MIXED, $class=__CLASS__, $other=array()){
+		if(FSnode_DEBUG){
+			$timestamp = microtime(TRUE);
+			/*extra*/ $last = json_decode(end($this->debugging), TRUE); if(isset($last['timestamp'])){ $duration = ($timestamp - $last['timestamp']); }
+			$entry = array();
+			foreach(array('timestamp'=>0,'duration'=>0,'method'=>__METHOD__,'location'=>NULL,'description'=>NULL,'result'=>MIXED,'input'=>MIXED,'class'=>__CLASS__) as $key=>$defval){
+				switch($key){
+					case 'method': case 'class': case 'description': case 'location': 
+						if(isset($$key) && $$key !== $defval && strlen($$key) > 0){ $entry[$key] = $$key; }	
+						break;
+					default:
+						if(isset($$key) && $$key !== $defval){ $entry[$key] = $$key; }	
+				}
+			}
+			if($other !== array()){ $entry['other'] = $other; }
+			$this->debugging[] = json_encode($entry);
+		}
 	}
 }
 /*To make sure FSnode_local is loaded*/

@@ -77,8 +77,9 @@ class FSnode_ftp extends FSnode {
 		if(!self::is_connected()){ return /*error: not connected*/ FALSE; }
 		else {
 			if(self::is_dir($filename)){
-				/*fix*/ if(substr($filename, -1, 1) !== DIRECTORY_SEPARATOR){ $filename .= DIRECTORY_SEPARATOR; }
-				$buff = self::rawlist(dirname(dirname($filename)).DIRECTORY_SEPARATOR, FALSE, basename(dirname($filename)));
+				$buff = self::rawlist(dirname($filename).DIRECTORY_SEPARATOR, FALSE, basename($filename));
+				#/*fix*/ if(substr($filename, -1, 1) !== DIRECTORY_SEPARATOR){ $filename .= DIRECTORY_SEPARATOR.'.'; }
+				#$buff = self::rawlist(dirname(dirname($filename)).DIRECTORY_SEPARATOR, FALSE, basename(dirname($filename)));
 				return $buff['filemtime'];
 			}
 			else{
@@ -87,7 +88,14 @@ class FSnode_ftp extends FSnode {
 		}
 	}
 	public /*dummy*/ function fileowner($filename){ $buff = self::rawlist(dirname($filename).DIRECTORY_SEPARATOR, FALSE, basename($filename)); return $buff['owner']; }
-	public /*dummy*/ function fileperms($filename){ $buff = self::rawlist(dirname($filename).DIRECTORY_SEPARATOR, FALSE, basename($filename)); return $buff['perms']; }
+	public /*dummy*/ function filerights($filename){
+		$prefix = '-';
+		if(self::is_dir($filename)){ $prefix = 'd'; }
+		elseif(self::is_link($filename)){ $prefix = 'l'; }
+		$buff = self::rawlist(dirname($filename).DIRECTORY_SEPARATOR, FALSE, basename($filename));
+		return $prefix.$buff['perms'];
+	}
+	public /**/ function fileperms($filename){ return '0x'.decoct(self::rights2fileperms(self::filerights($filename))); }
 	public /*int*/ function filesize($filename){ if(!self::is_connected()){ return /*error: not connected*/ FALSE; } else { return ftp_size($this->ftp_stream, (string) self::realpath($filename) ); } }
 	public /*dummy*/ function filetype($filename){ }
 	
@@ -227,6 +235,10 @@ class FSnode_ftp extends FSnode {
 	}
 	
 	public /*array|assigned*/ function rawlist($directory, $recursive=FALSE, $assigned=TRUE, $refresh=FALSE){
+		/*fix*/ if(substr($directory, -2, 2) == DIRECTORY_SEPARATOR.DIRECTORY_SEPARATOR){ $directory = substr($directory, 0, -1); }
+		/*fix*/ if(substr($directory, -1, 1) != DIRECTORY_SEPARATOR){ $directory .= DIRECTORY_SEPARATOR; }
+		/*fix*/ if($assigned === ""){ $assigned = '/'; }
+				
 		if(!self::is_connected()){ return /*error: not connected*/ FALSE; }
 		else { 
 			if($refresh !== FALSE && isset($this->cache[md5($directory)])){
@@ -234,6 +246,10 @@ class FSnode_ftp extends FSnode {
 			}
 			else{
 				$buff = $this->cache[md5($directory)] = ftp_rawlist($this->ftp_stream, (string) self::realpath($directory), $recursive);
+				/*debug*/ $this->cache[md5($directory)]['directory'] = $directory;
+				if($directory == '/'){
+					$this->cache[md5($directory)][-1] = $buff[-1] = "drw-rw-rwx\t0\t".$this->user."\t".$this->user."\t0\tJan  1  1970\t/";
+				}
 			}
 			if($assigned !== FALSE){
 				#if( ftp_systype($this->ftp_stream) == 'UNIX')
@@ -260,6 +276,7 @@ class FSnode_ftp extends FSnode {
 						), (isset($set[$fn]) && is_array($set[$fn]) ? $set[$fn] : array()));
 					}
 				}
+				//*debug*/ if($assigned == '/'){ $this->log(NULL, __METHOD__, /*__FILE__.':'.*/__LINE__, $set, array($directory, $assigned)); }
 				if($assigned === TRUE){
 					return $set;
 				} elseif( !isset($set[$assigned]) ){ return array(
