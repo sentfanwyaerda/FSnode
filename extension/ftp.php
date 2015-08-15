@@ -28,6 +28,8 @@ require_once(dirname(dirname(__FILE__)).DIRECTORY_SEPARATOR.'FSnode.php');
 define('FSnode_FTP_URI_PREFIX', 'ftp:// ftps:// sftp://');
 define('FSnode_FTP_SCHEME', 'ftp');
 
+if(!defined('FSnode_TEMP_DIRECTORY')){define('FSnode_TEMP_DIRECTORY', dirname(dirname(__FILE__)).DIRECTORY_SEPARATOR.'tmp'.DIRECTORY_SEPARATOR);}
+
 class FSnode_ftp extends FSnode {
 	public function Version($a=FALSE){ return (/*!(parent::version(TRUE) == self::version(FALSE)) && */ !($a==FALSE) ? parent::version(TRUE).'-' : NULL).'beta'; }
 	public function Product($full=FALSE){ return "FSnode:ftp".(!($full===FALSE) ? " ".self::version(TRUE).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
@@ -145,7 +147,7 @@ class FSnode_ftp extends FSnode {
 			case 'anonymous': case 'world': default:
 				$perms = str_repeat('-', 6).substr($perms, -3);
 		}
-		/*debug*/ print '<!-- '.$right.'-check '.$buff['perms'].' '.$filename.' ('.$level.': '.$perms.') -->'."\n";
+		//*debug*/ print '<!-- '.$right.'-check '.$buff['perms'].' '.$filename.' ('.$level.': '.$perms.') -->'."\n";
 		return (bool) preg_match("#".$right."#i", $perms);
 	}
 	
@@ -208,7 +210,7 @@ class FSnode_ftp extends FSnode {
 	
 	#Directory Handlers
 	public /*array*/ function scandir($directory=NULL, $sorting_order=SCANDIR_SORT_ASCENDING){
-		return self::_nlist_scandir($directory, $sorting_order);
+		return self::_rawlist_scandir($directory, $sorting_order);
 	}
 	public /*array*/ function _nlist_scandir($directory=NULL, $sorting_order=SCANDIR_SORT_ASCENDING){
 		//*debug*/ print '<!-- FSnode_ftp::scandir( '.$directory.' ) -->'."\n";
@@ -262,15 +264,20 @@ class FSnode_ftp extends FSnode {
 	
 	#Basic
 	public /*string*/ function read($filename){
+		$contents = FALSE;
 		/*realpath fix*/ $filename = self::realpath($filename);
 		if(!self::is_connected()){ return /*error: not connected*/ FALSE; }
 		else { 
 			$temp_file = tempnam(FSnode_TEMP_DIRECTORY, 'fsnode_');
-			$handle = fopen($temp_file, 'x+');
-			if(ftp_get($this->ftp_stream, $handle, (string) $filename )){ $contents = fread($handle, filesize($temp_file)); }
-			else{ $contents = FALSE; }
-			fclose($handle);
-			unlink($temp_file);
+			if($handle = fopen($temp_file, 'w')){
+				if(ftp_fget($this->ftp_stream, $handle, (string) $filename, FTP_BINARY )){
+					//$contents = fread($handle, filesize($temp_file));
+					$contents = file_get_contents($temp_file);
+				}
+				else{ $contents = FALSE; }
+				fclose($handle);
+				unlink($temp_file);
+			}
 			return $contents;
 		}
 	}
@@ -282,7 +289,7 @@ class FSnode_ftp extends FSnode {
 			$temp_file = tempnam(FSnode_TEMP_DIRECTORY, 'fsnode_');
 			file_put_contents($temp_file, $data);
 			if(ftp_alloc($this->ftp_stream, filesize($temp_file), $result)){
-				if(!ftp_put($this->ftp_stream, (string) $filename, $temp_file )){ $bool = FALSE; }
+				if(!ftp_put($this->ftp_stream, (string) $filename, $temp_file, FTP_BINARY )){ $bool = FALSE; }
 			} else { $bool = FALSE; /*$bool = $result;*/ }
 			unlink($temp_file);
 			return $bool;
@@ -301,7 +308,7 @@ class FSnode_ftp extends FSnode {
 			return /*error: not connected*/ FALSE;
 		}
 		else{
-			ftp_site($this->ftp_stream, $line);
+			@ftp_site($this->ftp_stream, $line);
 		}
 	}
 	public /*array|assigned*/ function rawlist($directory, $recursive=FALSE, $assigned=TRUE, $refresh=FALSE){
@@ -321,6 +328,7 @@ class FSnode_ftp extends FSnode {
 					$this->cache[md5($directory)][-1] = $buff[-1] = "drw-rw-rwx\t0\t".$this->user."\t".$this->user."\t0\tJan  1  1970\t/";
 				}
 			}
+			/*fix*/ if(!is_array($buff)){ $buff = array(); print '<!--empty buffer on FSnode_ftp::rawlist('.$directory.') '.md5($directory).' -->'."\n"; return FALSE; }
 			if($assigned !== FALSE){
 				#if( ftp_systype($this->ftp_stream) == 'UNIX')
 				$set = array();

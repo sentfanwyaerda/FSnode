@@ -1,4 +1,5 @@
 <?php 
+require_once(dirname(dirname(__FILE__)).'/extension/ftp.php');
 require_once(dirname(__FILE__).'/FSmirror.php');
 
 $local = FSnode::URI_load((isset($_GET['local']) ? $_GET['local'] : 'file:'.dirname(dirname(dirname(__FILE__))).'/test-mirror/a/'));

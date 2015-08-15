@@ -49,7 +49,7 @@ function FSnode($a=NULL, $b=FALSE, $c=FALSE, $d=FALSE){
 }
 
 class FSnode extends Xnode {
-	public function Version($f=FALSE){ return '0.4.1'; }
+	public function Version($f=FALSE){ return '0.4.2'; }
 	public function Product_url($u=FALSE){ return ($u === TRUE ? "https://github.com/sentfanwyaerda/FSnode" : "http://sent.wyaerda.org/FSnode/?version=".self::Version(TRUE).'&license='.str_replace(' ', '+', self::License()) );}
 	public function Product($full=FALSE){ return "FSnode".(!($full===FALSE) ? (is_array($full) ? '(extended with '.preg_replace('#(, )([A-Z]+)$#i', ' and \\2', strtoupper(implode(', ', self::list_FSnode_extensions()))).') ' : NULL)." ".self::version(TRUE).(class_exists('Xnode') && method_exists('Xnode', 'Product') ? '/'.Xnode::Product(TRUE) : NULL) : NULL); }
 	public function License($with_link=FALSE){ return ($with_link ? '<a href="'.self::License_url().'">' : NULL).'cc-by-nd 3.0'.($with_link ? '</a>' : NULL); }
@@ -152,6 +152,7 @@ class FSnode extends Xnode {
 		$FSnode->URI = $URI;
 		
 		$hooks = FSnode::get_FSnode_hooks_by_URI($URI);
+		//*debug*/ print '<!-- FSnode hooks of "'.$URI.'" are '.print_r($hooks, TRUE).' -->'."\n";
 		if(is_array($hooks)){
 			foreach($hooks as $hook){ $FSnode->add_hook($hook); }
 		}
@@ -417,7 +418,7 @@ class FSnode extends Xnode {
 	
 	public /*bool*/ function is_connected(){ return FALSE; }
 	
-	public /*bool*/ function mkdir($pathname, $mode=0777, $recursive=FALSE /*, (resource) $context */ ){ return mkdir( $this->_filename_attach_prefix( (string) $pathname ), (int) $mode, (bool) $recursive /*, (resource) $context */ ); }
+	public /*bool*/ function mkdir($pathname, $mode=0777, $recursive=FALSE /*, (resource) $context */ ){ return @mkdir( $this->_filename_attach_prefix( (string) $pathname ), (int) $mode, (bool) $recursive /*, (resource) $context */ ); }
 	public /*bool*/ function rename($oldname, $newname /*, (resource) $context */ ){ return rename( $this->_filename_attach_prefix( (string) $oldname ), $this->_filename_attach_prefix( (string) $newname ) /*, (resource) $context */  ); }
 	public /*bool*/ function rmdir($dirname /*, (resource) $context */ ){ return rmdir( $this->_filename_attach_prefix( (string) $dirname ) /*, (resource) $context */  ); }
 	public /*array*/ function stat($filename){ return stat( $this->_filename_attach_prefix( (string) $filename ) ); }
