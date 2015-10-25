@@ -325,7 +325,7 @@ class FSnode_ftp extends FSnode {
 				$buff = $this->cache[md5($directory)] = ftp_rawlist($this->ftp_stream, (string) self::realpath($directory), $recursive);
 				/*debug*/ $this->cache[md5($directory)]['directory'] = $directory;
 				if($directory == '/'){
-					$this->cache[md5($directory)][-1] = $buff[-1] = "drw-rw-rwx\t0\t".$this->user."\t".$this->user."\t0\tJan  1  1970\t/";
+					$this->cache[md5($directory)][-1] = $buff[-1] = "drwxrwxrwx\t0\t".$this->user."\t".$this->user."\t0\tJan  1  1970\t/";
 				}
 			}
 			/*fix*/ if(!is_array($buff)){ $buff = array(); print '<!--empty buffer on FSnode_ftp::rawlist('.$directory.') '.md5($directory).' -->'."\n"; return FALSE; }

@@ -7,6 +7,8 @@
 @define('ALLOW_FSbrowser', TRUE);
 @define('FSnode_ALLOW_CODE_EXECUTE', FALSE);
 
+$base = (isset($base) ? $base : $_SERVER['DOCUMENT_ROOT'].DIRECTORY_SEPARATOR );
+
 /*************
 *   FIXES    *
 *************/
